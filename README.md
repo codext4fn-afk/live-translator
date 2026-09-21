@@ -354,7 +354,7 @@ This records calls you are part of. Recording other people may need their permis
 where you live.
 
 ## Note
-If you'd like to talk to me about this repo or have some feedback you can also dm me on discord: doug.l0as
+If you'd like to talk to me about this repo or have some feedback you can also dm me on discord: doug.l0as. Thanks to RRosemont for testing the software.
 
 ## Licence
 
