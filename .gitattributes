@@ -1,0 +1,15 @@
+# Normalise to LF in the repository, check out native on each platform.
+* text=auto
+
+# PowerShell and batch files must keep CRLF or Windows misparses them.
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+*.py    text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+
+*.wav binary
+*.png binary

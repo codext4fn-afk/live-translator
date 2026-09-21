@@ -1,0 +1,26 @@
+live-translator
+Copyright 2026 codext4fn-afk
+
+Licensed under the Apache License, Version 2.0. See LICENSE for the full terms.
+
+--------------------------------------------------------------------------------
+This product depends on third-party software, obtained at install time and not
+redistributed here. Each remains under its own licence:
+
+  faster-whisper (MIT)              https://github.com/SYSTRAN/faster-whisper
+  CTranslate2 (MIT)                 https://github.com/OpenNMT/CTranslate2
+  OpenAI Whisper models (MIT)       https://github.com/openai/whisper
+  PySide6 / Qt for Python (LGPLv3)  https://www.qt.io/qt-for-python
+  PyAudioWPatch (MIT)               https://github.com/s0d3s/PyAudioWPatch
+  webrtcvad-wheels (BSD-3-Clause)   https://github.com/daanzu/py-webrtcvad-wheels
+  soxr / libsoxr (LGPLv2.1)         https://github.com/dofuuz/python-soxr
+  numpy (BSD-3-Clause)              https://numpy.org
+  httpx (BSD-3-Clause)              https://www.python-httpx.org
+  Ollama (MIT)                      https://github.com/ollama/ollama
+  Qwen3 models (Apache-2.0)         https://github.com/QwenLM/Qwen3
+
+Segoe UI Variable and Segoe Fluent Icons are Microsoft fonts included with
+Windows. They are used, not redistributed.
+
+San Francisco is an Apple typeface. It is named first in the font stack so that it
+is used where already installed, but it is not bundled with this project.

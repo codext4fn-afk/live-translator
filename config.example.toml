@@ -1,0 +1,100 @@
+# live-translator settings. Edit, save, restart.
+# Anything you delete falls back to a sensible default.
+
+[languages]
+# What you want things translated into.
+my_language = "English"
+
+auto_detect = true
+source = ""                  # ISO code, used only when auto_detect = false
+
+# Languages it will try to detect. Cut this down to the ones you actually hear:
+# fewer options means fewer wrong guesses. Keep your own language in the list so
+# it can be recognised and then ignored below. Empty = all 99.
+allowed = ["en", "fr", "es", "pt", "de", "it", "nl", "ar", "ru", "tr", "pl", "id", "ja"]
+
+# Skipped completely: no card, no replies, no model call. Your own language is
+# here because you do not need it translated, and skipping it is a big speed win.
+ignore_languages = ["en"]
+
+# Shown but not translated. Only matters for languages not in the list above.
+skip_translation_for = ["en"]
+
+
+[asr]
+model = "large-v3-turbo"     # or distil-large-v3, medium, small
+device = "cuda"              # cuda or cpu
+compute_type = "float16"     # int8 halves memory use
+beam_size = 3                # 1 is greedy, 3-5 is more accurate on unclear audio
+
+# Speech models invent text when they hear music or silence. These throw it away.
+max_no_speech_prob = 0.60
+min_avg_logprob = -1.00      # raise toward 0 to be stricter
+min_chars = 2
+min_language_prob = 0.55     # too high and it starts dropping real speech
+min_audio_s = 0.55           # shorter than this is a fragment, not a sentence
+
+
+[audio]
+device = ""                  # part of a device name; empty = default speakers
+vad_aggressiveness = 2       # 0 permissive .. 3 strict
+
+# The setting that matters most for accuracy. Too low and sentences get cut in
+# half, which makes the speech model guess at both the words and the language.
+silence_ms = 700             # pause that ends a sentence
+min_speech_ms = 500          # ignore blips shorter than this
+max_utterance_ms = 9000      # hard limit on one sentence
+pre_roll_ms = 300            # audio kept from just before someone starts talking
+
+# Long speech gets cut into pieces so you are not waiting for someone to finish.
+# 150 ms is measured: words are 50-100 ms apart, clause breaks start around 140.
+chunk_after_ms = 2500
+chunk_silence_ms = 150
+
+# Background level is measured continuously, so this adapts to your PC.
+noise_margin_db = 6.0        # raise if music keeps triggering it
+noise_gate_dbfs = -55.0      # hard floor, safety net only
+
+
+[suggest]
+enabled = true
+model = "qwen3:4b"           # anything you have in Ollama
+host = "http://127.0.0.1:11434"
+count = 3                    # fewer replies is faster
+tone = "casual and friendly, like a teenager in a game voice chat"
+context_turns = 6            # how much conversation the model sees
+timeout_s = 30
+
+# How long the model stays loaded when idle. When it expires the next line waits
+# about a minute for it to load again.
+keep_alive = "1h"
+
+num_ctx = 2048
+temperature = 0.6            # lower means fewer grammar mistakes
+
+
+[ui]
+opacity = 0.96               # 0.3 .. 1.0
+width = 620
+height = 620
+font_size = 13               # everything scales from this
+max_history = 40
+always_on_top = true
+start_paused = false
+
+# San Francisco is used if you have it installed, otherwise Segoe UI Variable.
+font_family = ""
+
+# Sounds play through the same speakers this records, so recording is muted
+# briefly each time one plays.
+sounds = true
+sound_volume = 0.6
+animations = true
+
+# Real backdrop blur, but Windows draws it as a rectangle behind the rounded
+# corners. Off means Qt paints the glass and the corners are actually round.
+acrylic = false
+
+# graphite, slate, ink, ash, midnight, plum, forest, ember.
+# The gear button changes this and writes it back here.
+gradient = "graphite"

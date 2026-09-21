@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------- private data
+# Logs contain transcripts of real conversations captured from your speakers.
+# Never publish them.
+logs/
+*.log
+*.wav
+
+# Generated at first run from sounds.py - no need to ship binaries.
+sounds/
+
+# ------------------------------------------------------------------ environment
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Model caches, if anyone points HF_HOME here.
+.cache/
+models/
+
+# Development probes and benchmarks. Useful while working on the code, not needed
+# to install or run it, so they stay out of the published repository.
+tests/
+
+# ------------------------------------------------------------------------ local
+# Personal settings: language choices, device name, window position. Everyone's
+# copy differs, and config.example.toml is the one that ships.
+config.toml
+
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
