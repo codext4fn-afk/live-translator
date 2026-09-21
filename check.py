@@ -51,11 +51,28 @@ def main() -> int:
 
     dll_dirs = bootstrap.prepare_cuda()
     line(OK if dll_dirs else WARN, "CUDA DLL path", f"{len(dll_dirs)} dir(s) registered")
+
+    adapters = bootstrap.gpu_names()
+    vendor = bootstrap.gpu_vendor()
+    line(OK, "graphics", ", ".join(adapters) if adapters else "none detected")
+
     cuda_ok, cuda_msg = bootstrap.cuda_available()
+    device, compute, model, threads, why = bootstrap.resolve_backend(
+        cfg.asr.device, cfg.asr.compute_type, cfg.asr.model, cfg.asr.cpu_threads
+    )
     if cuda_ok:
         line(OK, "CUDA device", cuda_msg)
+    elif vendor in ("amd", "intel"):
+        line(WARN, "CUDA device",
+             f"none - {vendor.upper()} GPUs cannot run the speech model, "
+             "so it runs on the CPU")
     else:
-        line(WARN, "CUDA device", f"{cuda_msg} - Whisper will fall back to CPU")
+        line(WARN, "CUDA device", f"{cuda_msg} - running on the CPU")
+
+    detail = f"{model} on {device}/{compute}"
+    if device == "cpu":
+        detail += f" with {threads} threads"
+    line(OK, "speech backend", detail)
 
     try:
         from livetranslator import audio

@@ -22,9 +22,14 @@ skip_translation_for = ["en"]
 
 
 [asr]
-model = "large-v3-turbo"     # or distil-large-v3, medium, small
-device = "cuda"              # cuda or cpu
-compute_type = "float16"     # int8 halves memory use
+# auto picks what suits your hardware. NVIDIA gets large-v3-turbo on the GPU.
+# Anything else (AMD, Intel, no GPU) gets small on the CPU, because the speech
+# library only accelerates on CUDA and a GPU-sized model on a CPU runs slower
+# than real time. Override any of these if you want something specific.
+model = "auto"               # auto, tiny, base, small, medium, large-v3-turbo
+device = "auto"              # auto, cuda, cpu
+compute_type = "auto"        # auto, float16, int8
+cpu_threads = 0              # 0 = one per physical core, capped at 8
 beam_size = 3                # 1 is greedy, 3-5 is more accurate on unclear audio
 
 # Speech models invent text when they hear music or silence. These throw it away.

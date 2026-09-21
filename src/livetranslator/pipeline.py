@@ -169,6 +169,7 @@ class Pipeline:
                 model=self.cfg.asr.model,
                 device=self.cfg.asr.device,
                 compute_type=self.cfg.asr.compute_type,
+                cpu_threads=self.cfg.asr.cpu_threads,
                 beam_size=self.cfg.asr.beam_size,
                 max_no_speech_prob=self.cfg.asr.max_no_speech_prob,
                 min_avg_logprob=self.cfg.asr.min_avg_logprob,

@@ -68,3 +68,94 @@ def cuda_available() -> tuple[bool, str]:
     if count < 1:
         return False, "no CUDA device visible to CTranslate2"
     return True, f"{count} CUDA device(s)"
+
+
+_GPU_KEY = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"
+
+
+def gpu_names() -> list[str]:
+    """Display adapter names, read from the registry so it costs nothing."""
+    if sys.platform != "win32":
+        return []
+    import winreg
+
+    names: list[str] = []
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _GPU_KEY) as root:
+            for i in range(16):
+                try:
+                    sub = winreg.EnumKey(root, i)
+                except OSError:
+                    break
+                if not sub.isdigit():
+                    continue
+                try:
+                    with winreg.OpenKey(root, sub) as key:
+                        desc, _ = winreg.QueryValueEx(key, "DriverDesc")
+                except OSError:
+                    continue
+                if isinstance(desc, str) and desc not in names:
+                    names.append(desc)
+    except OSError:
+        pass
+    return names
+
+
+def gpu_vendor() -> str:
+    """One of nvidia, amd, intel or unknown, based on the adapter names."""
+    joined = " ".join(gpu_names()).lower()
+    if "nvidia" in joined or "geforce" in joined or "quadro" in joined:
+        return "nvidia"
+    if "amd" in joined or "radeon" in joined:
+        return "amd"
+    if "intel" in joined:
+        return "intel"
+    return "unknown"
+
+
+def physical_cores() -> int:
+    """Physical core count, falling back to half the logical count."""
+    try:
+        import os as _os
+
+        count = _os.cpu_count() or 4
+    except Exception:
+        count = 4
+    return max(2, count // 2)
+
+
+def resolve_backend(device: str, compute_type: str, model: str,
+                    cpu_threads: int) -> tuple[str, str, str, int, str]:
+    """Turn "auto" settings into concrete ones for this machine.
+
+    CTranslate2 only accelerates on CUDA, so an AMD or Intel GPU means the CPU does
+    the work. A GPU-sized model then runs slower than real time, which is why the
+    model is chosen alongside the device rather than fixed.
+    """
+    reason = ""
+    want_auto_device = device in ("", "auto")
+
+    if want_auto_device:
+        ok, detail = cuda_available()
+        device = "cuda" if ok else "cpu"
+        vendor = gpu_vendor()
+        if ok:
+            reason = f"CUDA available ({detail})"
+        elif vendor in ("amd", "intel"):
+            reason = (f"{vendor.upper()} GPU found, which CTranslate2 cannot use; "
+                      "running on the CPU")
+        else:
+            reason = f"no CUDA device ({detail}); running on the CPU"
+
+    if compute_type in ("", "auto"):
+        compute_type = "float16" if device == "cuda" else "int8"
+
+    if model in ("", "auto"):
+        # large-v3-turbo is 2.3x slower than real time on a six-core CPU; small is
+        # about 0.6x, which keeps up with a conversation.
+        model = "large-v3-turbo" if device == "cuda" else "small"
+
+    if cpu_threads <= 0:
+        cpu_threads = min(8, physical_cores()) if device == "cpu" else 0
+
+    return device, compute_type, model, cpu_threads, reason

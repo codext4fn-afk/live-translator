@@ -40,6 +40,20 @@ if (-not (Test-Path $config)) {
     }
 } else {
     Ok "config.toml already present - leaving it alone"
+
+    # An existing config predates hardware detection and pins the NVIDIA settings.
+    # On an AMD or Intel machine that means a GPU-sized model on the CPU, which is
+    # slower than real time, so move those two keys to auto.
+    $text = Get-Content $config -Raw
+    $before = $text
+    $text = $text -replace '(?m)^\s*device\s*=\s*"cuda"\s*(#.*)?$', 'device = "auto"'
+    $text = $text -replace '(?m)^\s*model\s*=\s*"(large-v3-turbo|large-v3|large-v2|medium)"\s*(#.*)?$', 'model = "auto"'
+    $text = $text -replace '(?m)^\s*compute_type\s*=\s*"float16"\s*(#.*)?$', 'compute_type = "auto"'
+    if ($text -ne $before) {
+        Copy-Item $config "$config.backup" -Force
+        Set-Content -Path $config -Value $text -Encoding utf8 -NoNewline
+        Ok "config.toml updated to pick hardware automatically (old copy: config.toml.backup)"
+    }
 }
 
 # ---------------------------------------------------------------- python

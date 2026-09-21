@@ -135,9 +135,10 @@ class Transcriber:
     def __init__(
         self,
         *,
-        model: str = "large-v3-turbo",
-        device: str = "cuda",
-        compute_type: str = "float16",
+        model: str = "auto",
+        device: str = "auto",
+        compute_type: str = "auto",
+        cpu_threads: int = 0,
         beam_size: int = 1,
         max_no_speech_prob: float = 0.60,
         min_avg_logprob: float = -1.00,
@@ -161,13 +162,22 @@ class Transcriber:
 
         from faster_whisper import WhisperModel  # imported after the DLL path fix
 
+        device, compute_type, model, cpu_threads, why = bootstrap.resolve_backend(
+            device, compute_type, model, cpu_threads
+        )
+        if why:
+            log.info("hardware: %s", why)
+
         self.device = device
         self.compute_type = compute_type
+        self.model_name = model
+        self.cpu_threads = cpu_threads
 
         try:
             log.info("loading Whisper %s on %s (%s)", model, device, compute_type)
             started = time.monotonic()
-            self._model = WhisperModel(model, device=device, compute_type=compute_type)
+            self._model = WhisperModel(model, device=device, compute_type=compute_type,
+                                       cpu_threads=cpu_threads)
             log.info("model ready in %.1fs", time.monotonic() - started)
         except Exception as exc:
             # Only a CUDA problem justifies dropping to the CPU.
@@ -178,12 +188,21 @@ class Transcriber:
                 "latency.",
                 exc,
             )
+            # A GPU-sized model on the CPU runs slower than real time, so step down.
             self.device, self.compute_type = "cpu", "int8"
-            self._model = WhisperModel(model, device="cpu", compute_type="int8")
+            self.cpu_threads = min(8, bootstrap.physical_cores())
+            if model in ("large-v3-turbo", "large-v3", "large-v2", "medium"):
+                model = "small"
+                self.model_name = model
+                log.warning("stepping down to %s so the CPU can keep up", model)
+            self._model = WhisperModel(model, device="cpu", compute_type="int8",
+                                       cpu_threads=self.cpu_threads)
 
     @property
     def backend_name(self) -> str:
-        return f"{self.device}/{self.compute_type}"
+        if self.device == "cpu":
+            return f"{self.model_name} cpu/{self.compute_type} x{self.cpu_threads}"
+        return f"{self.model_name} {self.device}/{self.compute_type}"
 
     def transcribe(
         self,

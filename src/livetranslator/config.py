@@ -28,9 +28,10 @@ class LanguageConfig:
 
 @dataclass
 class AsrConfig:
-    model: str = "large-v3-turbo"
-    device: str = "cuda"
-    compute_type: str = "float16"
+    model: str = "auto"
+    device: str = "auto"
+    compute_type: str = "auto"
+    cpu_threads: int = 0
     beam_size: int = 3
     max_no_speech_prob: float = 0.60
     min_avg_logprob: float = -1.00
@@ -251,9 +252,19 @@ def _validate(cfg: Config) -> list[str]:
         notes.append("suggest.count above 6 hurts latency - lowered to 6")
         cfg.suggest.count = 6
 
-    if cfg.asr.device not in {"cuda", "cpu"}:
-        notes.append(f"asr.device {cfg.asr.device!r} unrecognised - using 'cuda'")
-        cfg.asr.device = "cuda"
+    if cfg.asr.device not in {"auto", "cuda", "cpu"}:
+        notes.append(f"asr.device {cfg.asr.device!r} unrecognised - using 'auto'")
+        cfg.asr.device = "auto"
+
+    if cfg.asr.compute_type not in {"auto", "float16", "float32", "int8",
+                                    "int8_float16", "int8_float32", "bfloat16"}:
+        notes.append(f"asr.compute_type {cfg.asr.compute_type!r} unrecognised - "
+                     "using 'auto'")
+        cfg.asr.compute_type = "auto"
+
+    if cfg.asr.cpu_threads < 0:
+        notes.append("asr.cpu_threads below 0 - using 0 (automatic)")
+        cfg.asr.cpu_threads = 0
 
     if cfg.asr.beam_size < 1:
         notes.append("asr.beam_size below 1 - raised to 1")

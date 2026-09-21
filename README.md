@@ -34,8 +34,12 @@ Close it with the X in the corner.
 
 ## Installing it
 
-You need Windows 10 or 11 and an NVIDIA GPU with 6 GB of memory. It works without a GPU
-but runs about 20 times slower. Set aside 8 GB of disk for the models.
+You need Windows 10 or 11 and about 8 GB of disk for the models.
+
+An NVIDIA GPU with 6 GB of memory gives the best results. AMD and Intel graphics work
+too, just on the CPU, because the speech library only accelerates on CUDA. It picks a
+smaller model in that case so it can still keep up. See
+[AMD and Intel graphics](#amd-and-intel-graphics).
 
 Install Python and Ollama:
 
@@ -60,6 +64,62 @@ Now start it with `live-translator.bat`. The first launch downloads the speech m
 about 1.6 GB. After that it opens in under a second
 
 If setup goes wrong, run `.\run.ps1 --check`. It tests each piece and says what failed.
+
+## Updating an existing install
+
+```powershell
+cd C:\path\to\live-translator
+git pull
+.\setup.ps1
+```
+
+`setup.ps1` is safe to run again. It keeps your settings and only changes what must
+change.
+
+If you installed before hardware detection existed, your `config.toml` still says
+`device = "cuda"`. On an AMD or Intel machine that means the speech model runs on the
+CPU at a size meant for a GPU, which is the slow install everyone hit. Running
+`setup.ps1` rewrites those keys to `auto` and saves your old file as
+`config.toml.backup`.
+
+Check what you ended up with:
+
+```powershell
+.\run.ps1 --check
+```
+
+The `speech backend` line names the model and device actually in use.
+
+## AMD and Intel graphics
+
+The speech library only accelerates on CUDA, so AMD and Intel GPUs cannot run it and
+the work falls to your CPU.
+
+That matters more than it sounds. Measured on a six core CPU with a 5.7 second clip:
+
+| Model | Time to transcribe | Speed |
+| --- | --- | --- |
+| large-v3-turbo | 13.3 s | 2.3x slower than real time |
+| small | 3.3 s | 0.58x, keeps up |
+| base | 1.2 s | 0.21x, very quick |
+| tiny | 0.5 s | 0.08x, least accurate |
+
+A GPU-sized model on a CPU takes longer to transcribe a sentence than the sentence took
+to say, so you fall further behind the longer someone talks. That is why installs on AMD
+machines felt like they were doing nothing.
+
+It now picks `small` automatically when there is no CUDA device, the smallest model that
+still handles languages other than English well. If that is still too slow:
+
+```toml
+[asr]
+model = "base"
+```
+
+Replies come from Ollama, which is separate and does support AMD through ROCm. If your
+card is on
+[Ollama's supported list](https://github.com/ollama/ollama/blob/main/docs/gpu.md) that
+half runs on the GPU regardless.
 
 ## Using it
 
@@ -136,6 +196,10 @@ On an RTX 3070:
 
 Transcribing is fast. Writing the replies is the slow part, and it depends on how much
 the model writes, so `suggest.count` changes speed more than anything else.
+
+Without an NVIDIA GPU it uses `small` on the CPU, where transcribing takes about 0.6
+seconds per second of speech rather than half a second flat. Everything else is the
+same.
 
 It uses about 2 GB for the speech model and 3 GB for the language model. That leaves
 3 GB free on an 8 GB card. If a game needs it back, set `asr.compute_type` to `int8`.
