@@ -12,6 +12,8 @@ When someone speaks a language you don't know, you get their words, the translat
 a few replies you can send back in their language. You can also type in English and get
 it translated
 
+Unoptimized for low end PCs, check **requirements**
+
 ![The overlay](docs/overlay.png)
 
 ## How to start it
