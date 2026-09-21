@@ -238,8 +238,6 @@ src/livetranslator/
   pipeline.py  threading
 ```
 
-Colours and sizes live in `theme.py`, away from the layout code, so you can restyle it
-without touching the window.
 
 ## Privacy
 
