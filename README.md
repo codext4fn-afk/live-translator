@@ -38,7 +38,7 @@ You need Windows 10 or 11 and about 8 GB of disk for the models.
 
 An NVIDIA GPU with 6 GB of memory gives the best results. AMD and Intel graphics work
 too, just on the CPU, because the speech library only accelerates on CUDA. It picks a
-smaller model in that case so it can still keep up. See
+smaller model in that case so it can still keep up. Check this
 [AMD and Intel graphics](#amd-and-intel-graphics).
 
 Install Python and Ollama:
@@ -154,7 +154,7 @@ you might want to change:
 
 ### English doesn't show up
 
-That is on purpose. You already speak it, so it gets dropped before anything else
+That's on purpose. You already speak it, so it gets dropped before anything else
 happens. It also makes everything faster, because in a mostly English call there is
 almost nothing left to do.
 
