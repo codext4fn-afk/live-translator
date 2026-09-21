@@ -10,9 +10,7 @@ that sits on top of your game.
 It records your speakers, not your microphone, so it hears the other people in the call.
 When someone speaks a language you don't know, you get their words, the translation, and
 a few replies you can send back in their language. You can also type in English and get
-it translated for them.
-
-It runs offline on your own PC. Nothing gets uploaded and you don't need an account.
+it translated
 
 ![The overlay](docs/overlay.png)
 
@@ -57,7 +55,7 @@ file. Then it checks everything and tells you if something is missing. Takes abo
 minutes, mostly downloading.
 
 Now start it with `live-translator.bat`. The first launch downloads the speech model,
-about 1.6 GB. After that it opens in under a second.
+about 1.6 GB. After that it opens in under a second
 
 If setup goes wrong, run `.\run.ps1 --check`. It tests each piece and says what failed.
 
@@ -69,8 +67,8 @@ replies you can send. Click a reply to copy it, then paste it in your chat.
 For languages that don't use our alphabet there is a pronunciation line under each
 reply, so you can read Japanese or Arabic out loud.
 
-The bar at the bottom goes the other way. Type in English, press Enter, and you get it
-in their language. Auto means whoever spoke last.
+The bar at the bottom goes the other way. Type in English, press Enter and you get it
+in their language.
 
 Drag the window from anywhere that isn't a button. The corner resizes it. The buttons
 along the top are pause, settings, clear, dim, brighten, close.
@@ -188,11 +186,11 @@ game to Borderless or Windowed.
 
 ```
 speakers
-  -> WASAPI loopback capture, resampled to 16 kHz mono
-  -> voice detection with an adaptive noise gate
-  -> faster-whisper large-v3-turbo on CUDA
-  -> qwen3:4b through Ollama, streamed
-  -> overlay
+  - WASAPI loopback capture, resampled to 16 kHz mono
+  - voice detection with an adaptive noise gate
+  - faster-whisper large-v3-turbo on CUDA
+  - qwen3:4b through Ollama, streamed
+  - overlay
 ```
 
 Things worth knowing if you want to change it:
