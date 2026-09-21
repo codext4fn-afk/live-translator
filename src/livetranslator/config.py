@@ -178,8 +178,9 @@ def load(path: str | Path | None = None) -> tuple[Config, list[str]]:
     return cfg, warnings
 
 
-def save_value(path: Path | None, section: str, key: str, value: str) -> bool:
-    """Persist one string setting, preserving comments and layout."""
+def save_value(path: Path | None, section: str, key: str,
+               value: str | list[str]) -> bool:
+    """Persist one setting, a string or a list, preserving comments and layout."""
     if path is None or not Path(path).is_file():
         return False
     path = Path(path)
@@ -190,13 +191,18 @@ def save_value(path: Path | None, section: str, key: str, value: str) -> bool:
         log.warning("could not read %s to save %s", path, key)
         return False
 
+    if isinstance(value, (list, tuple)):
+        rendered = "[" + ", ".join(f'"{v}"' for v in value) + "]"
+    else:
+        rendered = f'"{value}"'
+
     line_re = re.compile(rf'^(\s*){re.escape(key)}\s*=\s*.*$', re.MULTILINE)
-    replacement = f'\\1{key} = "{value}"'
+    replacement = f'\\1{key} = {rendered}'
     section_re = re.compile(rf"^\s*\[{re.escape(section)}\]\s*$", re.MULTILINE)
 
     found = section_re.search(text)
     if found is None:
-        text = f'{text.rstrip()}\n\n[{section}]\n{key} = "{value}"\n'
+        text = f'{text.rstrip()}\n\n[{section}]\n{key} = {rendered}\n'
     else:
         # Only touch a key inside this section: the same name may exist in another.
         start = found.end()
@@ -207,7 +213,7 @@ def save_value(path: Path | None, section: str, key: str, value: str) -> bool:
         if line_re.search(block):
             block = line_re.sub(replacement, block, count=1)
         else:
-            block = block.rstrip("\n") + f'\n{key} = "{value}"\n\n'
+            block = block.rstrip("\n") + f'\n{key} = {rendered}\n\n'
         text = text[:start] + block + text[end:]
 
     try:

@@ -104,25 +104,37 @@ class Pipeline:
 
     def set_my_language(self, name: str) -> None:
         """Change the language everything is translated into, and remember it."""
+        previous = _language_code(self.cfg.languages.my_language)
         self.cfg.languages.my_language = name
         if self._suggester is not None:
             self._suggester.set_my_language(name)
 
         code = _language_code(name)
-        if code:
-            # You do not need a translator for the language you just said you read.
-            self.cfg.languages.skip_translation_for = [code]
-            self.cfg.languages.ignore_languages = [code]
+        if code and code != previous:
+            # Add the new language, never remove one. These lists used to be replaced
+            # wholesale, so picking a language in Settings silently stopped English
+            # being ignored while config.toml still said it was. Anything already in
+            # here is a language the user reads, and switching does not change that.
+            for attr in ("ignore_languages", "skip_translation_for"):
+                current = list(getattr(self.cfg.languages, attr))
+                if code not in current:
+                    current.append(code)
+                setattr(self.cfg.languages, attr, current)
+                config_mod.save_value(self.cfg.source_path, "languages", attr, current)
+
             allowed = set(self.cfg.languages.allowed)
             if allowed:
                 # Keep it detectable, or its speech gets forced into another language.
                 allowed.add(code)
                 self.cfg.languages.allowed = sorted(allowed)
+                config_mod.save_value(self.cfg.source_path, "languages", "allowed",
+                                      self.cfg.languages.allowed)
                 if self._transcriber is not None:
                     self._transcriber.allowed_languages = allowed
 
         config_mod.save_value(self.cfg.source_path, "languages", "my_language", name)
-        log.info("translating into %s; ignoring %s in the feed", name, code or "nothing")
+        log.info("translating into %s; ignoring %s", name,
+                 ", ".join(self.cfg.languages.ignore_languages) or "nothing")
 
     def suppress_capture(self, milliseconds: int) -> None:
         """Ignore captured audio briefly - used while an interface sound plays."""
