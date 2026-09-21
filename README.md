@@ -250,6 +250,9 @@ not uploaded anywhere and git ignores it. Delete it whenever you like.
 This records calls you are part of. Recording other people may need their permission
 where you live.
 
+## Note
+If you'd like to talk to me about this repo or have some feedback you can also dm me on discord: doug.l0as
+
 ## Licence
 
 Apache 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
