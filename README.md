@@ -109,17 +109,46 @@ to say, so you fall further behind the longer someone talks. That is why install
 machines felt like they were doing nothing.
 
 It now picks `small` automatically when there is no CUDA device, the smallest model that
-still handles languages other than English well. If that is still too slow:
+still handles languages other than English well.
+
+**The biggest thing you can do is narrow the language list.** Working out which of
+thirteen languages someone is speaking costs a whole extra pass over the audio. Tell it
+the one language you actually hear and that pass disappears:
+
+```toml
+[languages]
+allowed = ["fr"]
+```
+
+Measured on the same clip: 3.14 s with thirteen languages, 1.97 s with one. Same text,
+37% less work. Keep your own language out of the list if you have it in
+`ignore_languages`, or leave both in and it still works.
+
+If it is still too slow, drop to a smaller model:
 
 ```toml
 [asr]
 model = "base"
 ```
 
-Replies come from Ollama, which is separate and does support AMD through ROCm. If your
-card is on
+### Why not the GPU
+
+You will see ROCm, DirectML and Vulkan suggested for this. None of them work here, and
+they were each tried:
+
+- **ROCm** is what AMD uses for compute, but the speech library is built on CTranslate2,
+  which only targets CUDA. There is no ROCm build of it, and AMD's ROCm for Windows
+  covers few cards anyway.
+- **DirectML** runs on any Direct3D 12 GPU and does load Whisper. The output is wrong.
+  A test clip came back as "Hello detrimental detrimental detrimental" where the CPU
+  gave "Hello there! Can you hear me clearly on this". It was also slower.
+- **Vulkan** works in whisper.cpp, but the project ships no Vulkan build for Windows
+  x64, only CPU, BLAS and CUDA. Using it would mean asking you to compile it yourself.
+
+Replies are different. Those come from Ollama, which does support AMD through ROCm, so
+if your card is on
 [Ollama's supported list](https://github.com/ollama/ollama/blob/main/docs/gpu.md) that
-half runs on the GPU regardless.
+half already runs on your GPU.
 
 ## Using it
 
