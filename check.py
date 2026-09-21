@@ -20,7 +20,6 @@ def main() -> int:
     failures = 0
     print("live-translator preflight\n" + "=" * 60)
 
-    # --- config ---------------------------------------------------------------
     try:
         from livetranslator import config as config_mod
 
@@ -32,7 +31,6 @@ def main() -> int:
         line(BAD, "config", repr(exc))
         return 1
 
-    # --- python packages ------------------------------------------------------
     for module, label in [
         ("numpy", "numpy"),
         ("soxr", "soxr"),
@@ -49,7 +47,6 @@ def main() -> int:
             line(BAD, label, repr(exc))
             failures += 1
 
-    # --- CUDA -----------------------------------------------------------------
     from livetranslator import bootstrap
 
     dll_dirs = bootstrap.prepare_cuda()
@@ -60,7 +57,6 @@ def main() -> int:
     else:
         line(WARN, "CUDA device", f"{cuda_msg} - Whisper will fall back to CPU")
 
-    # --- audio loopback -------------------------------------------------------
     try:
         from livetranslator import audio
 
@@ -76,7 +72,6 @@ def main() -> int:
         line(BAD, "audio", repr(exc))
         failures += 1
 
-    # --- ollama ---------------------------------------------------------------
     if cfg.suggest.enabled:
         try:
             from livetranslator.suggest import Suggester
@@ -98,7 +93,6 @@ def main() -> int:
     else:
         line(WARN, "ollama", "suggest.enabled = false - translation only")
 
-    # --- qt gui ---------------------------------------------------------------
     try:
         from PySide6.QtCore import qVersion
         from PySide6.QtWidgets import QApplication

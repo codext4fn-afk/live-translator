@@ -90,8 +90,7 @@ def _normalise(text: str) -> str:
     return _WS_RE.sub(" ", text).strip().casefold()
 
 
-# The blocklists are written above in readable form, but matching happens against
-# normalised text.
+# The blocklists are written above in readable form.
 _BLOCK_SUBSTRINGS: tuple[str, ...] = tuple(
     sorted({n for n in map(_normalise, _HALLUCINATION_SUBSTRINGS) if n})
 )
@@ -111,8 +110,7 @@ def _is_repetitive(text: str, *, max_ratio: float = 0.45) -> bool:
     return max(counts.values()) / len(tokens) > max_ratio
 
 
-# Markers that distinguish "this machine cannot use the GPU" from any other startup
-# failure. Matched case-insensitively against the exception text.
+# Markers that distinguish "this machine cannot use the GPU" from any other startup failure.
 _CUDA_FAILURE_MARKERS = (
     "cuda",
     "cudnn",
@@ -218,8 +216,7 @@ class Transcriber:
             vad_filter=trim_silence,
             vad_parameters={"min_silence_duration_ms": 300} if trim_silence else None,
             condition_on_previous_text=False,
-            # A single temperature rather than a fallback ladder: a retry at 0.2/0.4
-            # only fires on clips we would reject anyway, so it buys nothing but latency.
+            # A single temperature rather than a fallback ladder: a retry at 0.2/0.4 only.
             temperature=0.0,
             # Segment timestamps are never displayed, and not emitting them is ~19% faster.
             without_timestamps=True,
@@ -248,8 +245,7 @@ class Transcriber:
         result = Transcript(
             text=text,
             language=info.language or "",
-            # When the language was chosen from the shortlist, transcribe() reports a
-            # probability of 1.0 because it was told what to use - keep the real one.
+            # When the language was chosen from the shortlist.
             language_prob=detected_prob or float(info.language_probability or 0.0),
             avg_logprob=avg_logprob,
             no_speech_prob=worst_no_speech,
@@ -286,9 +282,7 @@ class Transcriber:
         """Return a human-readable reason to discard this transcript, or ""."""
         normalised = _normalise(r.text)
 
-        # Whisper guesses on very short clips - both the words and the language - and
-        # a confident-looking guess from half a second of audio is how wrong
-        # translations get through.
+        # Whisper guesses on very short clips - both the words and the language.
         if r.audio_s < self.min_audio_s:
             return f"fragment ({r.audio_s:.2f}s of audio)"
         if not normalised:

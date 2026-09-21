@@ -19,8 +19,7 @@ from .vad import Segmenter, Utterance
 
 log = logging.getLogger(__name__)
 
-# Suggestions are only worth having while they are current. If speech outruns the
-# model, drop the oldest pending item rather than falling further behind.
+# Suggestions are only worth having while they are current.
 _MAX_PENDING_SUGGESTIONS = 3
 
 
@@ -39,8 +38,7 @@ class Pipeline:
 
         self._stop = threading.Event()
         self._ready = threading.Event()
-        # Set once the warmup thread has finished, successfully or not. Consumers wait
-        # on it instead of reporting "unavailable" during the seconds it takes to load.
+        # Set once the warmup thread has finished, successfully or not.
         self._suggester_ready = threading.Event()
         self._threads: list[threading.Thread] = []
 
@@ -69,7 +67,6 @@ class Pipeline:
         overlay.set_quit_hook(self.stop)
         overlay.set_compose_hook(self._on_compose)
 
-    # ------------------------------------------------------------------ lifecycle
 
     def start(self) -> None:
         self._spawn(self._load, "loader")
@@ -113,8 +110,7 @@ class Pipeline:
 
         code = _language_code(name)
         if code:
-            # You do not need a translator for the language you just said you read, so
-            # it stops appearing in the feed - and the old one starts appearing again.
+            # You do not need a translator for the language you just said you read.
             self.cfg.languages.skip_translation_for = [code]
             self.cfg.languages.ignore_languages = [code]
             allowed = set(self.cfg.languages.allowed)
@@ -133,7 +129,6 @@ class Pipeline:
         if self._capture is not None:
             self._capture.suppress_for(milliseconds)
 
-    # --------------------------------------------------------------------- loader
 
     def _warm_suggester(self) -> None:
         """Connect to Ollama and page the model into VRAM. Runs off-thread."""
@@ -201,8 +196,7 @@ class Pipeline:
             self._status("startup failed - see logs\\live-translator.log")
             return
 
-        # Audio is live now; the suggester may still be warming, which is fine -
-        # _suggest_loop simply has nothing to do until it appears.
+        # Audio is live now; the suggester may still be warming.
         self._ready.set()
         self._spawn(self._segment_loop, "segment")
         self._spawn(self._asr_loop, "asr")
@@ -211,7 +205,6 @@ class Pipeline:
         self._spawn(self._compose_loop, "compose")
         self._spawn(self._status_loop, "status")
 
-    # ---------------------------------------------------------------------- stages
 
     def _segment_loop(self) -> None:
         assert self._capture is not None
@@ -281,8 +274,7 @@ class Pipeline:
 
             code = (result.language or "").lower()
             if code in {c.lower() for c in self.cfg.languages.ignore_languages}:
-                # Dropped before any model call. When most of what your speakers play
-                # is your own language, this is where most of the speed comes from.
+                # Dropped before any model call.
                 log.info("ignored %s(%.2f): %r", code, result.language_prob,
                          result.text[:60])
                 continue
@@ -394,7 +386,6 @@ class Pipeline:
             self.overlay.post(lambda: card.finish())
             self.overlay.post(lambda ms=latency: card.set_meta(f"{timestamp()}  ·  {ms:.1f}s"))
 
-    # --------------------------------------------------------------------- compose
 
     def _on_compose(self, text: str, target_code: str) -> None:
         """Called on the GUI thread - enqueue only, never block the interface."""
@@ -429,11 +420,9 @@ class Pipeline:
 
             self.overlay.post(lambda r=result: self.overlay.show_outgoing(r))
             if result.ok:
-                # Record what the user meant, in their own words: the history is read
-                # back as conversation context, and the English is what carries intent.
+                # Record what the user meant, in their own words: the history is read back.
                 self._remember(f"you: {text}")
 
-    # ---------------------------------------------------------------------- shared
 
     def _remember(self, line: str) -> None:
         if self._history.maxlen:
@@ -510,8 +499,7 @@ def run(cfg: Config) -> None:
     pipeline = Pipeline(cfg, overlay)
     # Hooks that call into the pipeline have to be attached after it exists.
     overlay.set_language_hook(pipeline.set_my_language)
-    # Interface sounds leave the same speakers we record, so mute capture while they
-    # play. Without this the app transcribes its own clicks.
+    # Interface sounds leave the same speakers we record, so mute capture while they play.
     board.set_playback_listener(pipeline.suppress_capture)
 
     if cfg.ui.start_paused:

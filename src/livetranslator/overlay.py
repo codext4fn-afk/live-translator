@@ -93,7 +93,6 @@ class Card(QFrame):
         if confidence:
             badge_text += f"  {confidence:.0%}"
         # No inline style: the badge takes its neutral colour from the stylesheet.
-        # An inline rule here would override it and re-tint the code.
         header.addWidget(_label(badge_text, "langBadge", wrap=False))
         header.addWidget(_label(language_name(language), "langName", wrap=False))
         header.addStretch(1)
@@ -115,7 +114,6 @@ class Card(QFrame):
         self._reply_count = 0
         self._placeholder: QWidget | None = None
 
-    # ------------------------------------------------------------------ mutation
 
     def set_translation(self, text: str) -> None:
         self._translation.setObjectName("translation")
@@ -233,8 +231,7 @@ class ComposeBar(QFrame):
         self._dismiss.clicked.connect(self.dismiss)
         head.addWidget(self._dismiss, 0, Qt.AlignTop)
 
-        # One row: this box translates exactly what was typed, so there is nothing to
-        # offer alongside it.
+        # One row: this box translates exactly what was typed.
         self._primary_row, self._primary, self._primary_say = self._copy_row(
             "outgoingPrimary")
         self._note = _label("", "outgoingNote")
@@ -310,7 +307,6 @@ class ComposeBar(QFrame):
         row.clicked.connect(lambda: self._overlay.copy_to_clipboard(label.text()))
         return row, label, say
 
-    # ------------------------------------------------------------------- state
 
     def set_auto_language(self, code: str) -> None:
         """Track the most recent speaker for the Auto entry."""
@@ -334,7 +330,6 @@ class ComposeBar(QFrame):
         self.show_pending(text, target)
         self.submitted.emit(text, target)
 
-    # -------------------------------------------------------------------- view
 
     def set_busy(self, busy: bool) -> None:
         self._send.setEnabled(not busy)
@@ -372,8 +367,7 @@ class ComposeBar(QFrame):
         else:
             self._note.hide()
         self._open_panel(animate=True)
-        # The answer replaces "translating…" in place, so fade the row that carries it
-        # rather than re-expanding the whole panel.
+        # The answer replaces "translating…" in place.
         motion.fade_in(self._primary_row, duration=220)
 
     def show_error(self, message: str) -> None:
@@ -403,6 +397,8 @@ class Overlay(QWidget):
         gradient: str = theme.DEFAULT_GRADIENT,
     ) -> None:
         self._app = QApplication.instance() or QApplication([])
+        # Must happen before the stylesheet is applied, or the families are unknown.
+        theme.load_bundled_fonts()
         super().__init__()
 
         self.font_size = font_size
@@ -455,7 +451,6 @@ class Overlay(QWidget):
         self._toast_timer.setSingleShot(True)
         self._toast_timer.timeout.connect(self._toast.hide)
 
-    # --------------------------------------------------------------------- build
 
     def _build(self, my_language: str) -> None:
         shell = QVBoxLayout(self)
@@ -475,8 +470,7 @@ class Overlay(QWidget):
         self.compose = ComposeBar(self, my_language)
         layout.addWidget(self.compose)
 
-        # Resize handle only - the old status line has been removed. Pipeline state is
-        # still logged and still reachable through the title bar tooltip.
+        # Resize handle only - the old status line has been removed.
         grip_row = QHBoxLayout()
         grip_row.setContentsMargins(0, 0, 0, 0)
         grip_row.setSpacing(0)
@@ -500,8 +494,7 @@ class Overlay(QWidget):
         self._settings.chosen.connect(self._apply_gradient)
         self._settings.language_chosen.connect(self._apply_language)
 
-        # Created last and raised, so the drag splash draws over the content instead
-        # of behind it.
+        # Created last and raised, so the drag splash draws over the content instead of.
         self._splash = SplashSurface(theme.R_WINDOW, self._root,
                                      colour=QColor(theme.BLUE))
         self._splash.raise_()
@@ -618,7 +611,6 @@ class Overlay(QWidget):
             glass.round_window(int(self.winId()), self.width(), self.height(),
                                theme.R_WINDOW)
 
-    # ------------------------------------------------------------------ dragging
 
     # Anything the user can operate; a press on one of these is not a drag.
     _INTERACTIVE = (QPushButton, QLineEdit, QComboBox, QScrollBar, QSizeGrip,
@@ -666,7 +658,6 @@ class Overlay(QWidget):
 
     # No mouseDoubleClickEvent.
 
-    # ------------------------------------------------------------------- controls
 
     def nudge_opacity(self, delta: float) -> None:
         # No readout: the change is visible on the window itself.
@@ -674,8 +665,7 @@ class Overlay(QWidget):
         self.setWindowOpacity(self._opacity)
 
     def toggle_pause(self) -> None:
-        # No toast either - the button changes to a play glyph and turns amber, and the
-        # mic icon stops pulsing. The state is already on screen.
+        # No toast either - the button changes to a play glyph and turns amber.
         self._paused = not self._paused
         self._pause_btn.setText(Icon.PLAY if self._paused else Icon.PAUSE)
         self._pause_btn.setObjectName("chromeActive" if self._paused else "chrome")
@@ -725,7 +715,6 @@ class Overlay(QWidget):
         motion.fade_in(self._toast, duration=160)
         self._toast_timer.start(ms)
 
-    # ----------------------------------------------------------------- public API
 
     def add_hover_cue(self, widget: QWidget) -> None:
         """Play the hover cue when the pointer enters ``widget``."""
@@ -763,7 +752,6 @@ class Overlay(QWidget):
         except Exception:
             log.exception("overlay callback failed")
 
-    # ------------------------------------------------------------------ settings
 
     def _toggle_settings(self) -> None:
         self._position_settings()
@@ -808,8 +796,7 @@ class Overlay(QWidget):
         self._on_language = fn
 
     def set_status(self, text: str) -> None:
-        """Pipeline state. The status line was removed at the user's request, so this
-        now lives in the title bar's tooltip rather than taking up a row of its own."""
+        """Pipeline state. """
         self._titleLabel.setToolTip(text)
         self._dot.setToolTip(text)
 

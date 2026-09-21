@@ -121,8 +121,7 @@ class _RippleMixin:
             self._cues.click()
 
     def enterEvent(self, event) -> None:  # noqa: ANN001 - Qt signature
-        # A soft bloom from the middle, much fainter than a click, so the control
-        # visibly wakes up under the pointer instead of just swapping colour.
+        # A soft bloom from the middle, much fainter than a click.
         self._hover_ripple.start(self.rect().center(), peak=0.09, duration=320)
         if self._cues is not None:
             self._cues.hover()
@@ -226,8 +225,7 @@ class PixelSplash(QObject):
 
         self._grow.stop()
         self._fade.stop()
-        # Bounded radius. Reaching for the furthest corner turned this into a
-        # full-window wash; it should be a patch of light under the hand.
+        # Bounded radius.
         self._grow.setDuration(260)
         self._grow.setStartValue(max(10.0, self._radius * 0.4))
         self._grow.setEndValue(float(self.MAX_RADIUS))
@@ -285,8 +283,7 @@ class PixelSplash(QObject):
                 # Deterministic per-cell jitter gives the ragged, dithered edge.
                 jitter = (((x * 73856093) ^ (y * 19349663)) >> 4) & 0xFF
                 weight *= 0.62 + (jitter / 255.0) * 0.38
-                # Drop cells towards the rim so the boundary breaks up into pixels
-                # instead of ending on a clean circle.
+                # Drop cells towards the rim so the boundary breaks up into pixels instead.
                 if t > 0.55 and jitter < int((t - 0.55) * 460):
                     continue
 
@@ -336,14 +333,13 @@ def fade_in(widget: QWidget, *, duration: int = 220,
     animation.setStartValue(start)
     animation.setEndValue(1.0)
     animation.setEasingCurve(EASE_OUT)
-    # Dropping the effect afterwards restores native painting, which keeps text
-    # rendering crisp and avoids a permanent offscreen buffer per card.
+    # Dropping the effect afterwards restores native painting.
     animation.finished.connect(lambda: widget.setGraphicsEffect(None))
     animation.start()
     return animation
 
 
-# Qt's "no maximum" sentinel. Restored after a reveal so the widget can grow again.
+# Qt's "no maximum" sentinel.
 _UNCONSTRAINED = 16_777_215
 
 
@@ -361,8 +357,7 @@ def reveal(widget: QWidget, *, duration: int = 260) -> None:
     animation.setEasingCurve(EASE_OUT)
     animation.setStartValue(0)
     animation.setEndValue(target)
-    # Release the constraint afterwards, or the card can never grow when its replies
-    # stream in a second later.
+    # Release the constraint afterwards, or the card can never grow when its replies stream.
     animation.finished.connect(lambda: widget.setMaximumHeight(_UNCONSTRAINED))
     animation.start()
     widget._entrance = animation  # keep a reference alive for the duration

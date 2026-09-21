@@ -36,8 +36,7 @@ class Swatch(PressableFrame):
 
     def _apply_fill(self) -> None:
         g0, g1, g2 = theme.gradient_stops(self.name)
-        # Painted inline: each swatch needs its own colours, which a shared stylesheet
-        # rule cannot express.
+        # Painted inline: each swatch needs its own colours.
         self.setStyleSheet(
             f"#swatch, #swatchActive {{ background: qlineargradient("
             f"x1:0, y1:0, x2:0.4, y2:1, stop:0 {g0}, stop:0.55 {g1}, stop:1 {g2}); }}"
@@ -114,7 +113,6 @@ class SettingsPanel(QFrame):
         outer.addLayout(grid)
         outer.addSpacing(14)
 
-        # --- what incoming speech gets translated into ---------------------------
         language_hint = QLabel("Translate everything into")
         language_hint.setObjectName("settingsHint")
         outer.addWidget(language_hint)
@@ -141,7 +139,6 @@ class SettingsPanel(QFrame):
             self._sounds.click()
         self.language_chosen.emit(name)
 
-    # ------------------------------------------------------------------ behaviour
 
     def _choose(self, name: str) -> None:
         if name == self._current:

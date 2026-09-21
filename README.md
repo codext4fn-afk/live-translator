@@ -241,6 +241,16 @@ src/livetranslator/
 ```
 
 
+## Fonts
+
+Inter ships in `assets/fonts` and loads at startup, so the window looks the same on
+every machine with nothing to install.
+
+San Francisco is used instead if you already have it. Apple does not allow it to be
+redistributed, so it cannot be included here. If you want it, get SF Pro from
+[developer.apple.com/fonts](https://developer.apple.com/fonts/), install the files, and
+restart. Set `ui.font_family` to force any other font you have.
+
 ## Privacy
 
 Audio is handled in memory and never saved. The only file it writes is

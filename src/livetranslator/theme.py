@@ -1,12 +1,9 @@
-"""Colours, type, icons and the Qt stylesheet.
-
-Everything below the selectors is a normal f-string, so a '#' at the start of a line
-is a QSS id selector, not a Python comment. Tools that strip comments will eat them.
-"""
+"""Colours, type, icons and the Qt stylesheet."""
 
 from __future__ import annotations
 
-# --- glass layers -------------------------------------------------------------
+from pathlib import Path
+
 # Low alphas on purpose: the acrylic backdrop supplies the depth, so these only tint.
 GLASS_BASE = "rgba(28, 28, 34, 0.55)"      # window fill over the blur
 GLASS_PANEL = "rgba(255, 255, 255, 0.055)"  # cards
@@ -15,21 +12,16 @@ GLASS_CONTROL = "rgba(255, 255, 255, 0.085)"
 GLASS_CONTROL_HI = "rgba(255, 255, 255, 0.145)"
 GLASS_SUNKEN = "rgba(0, 0, 0, 0.22)"        # inputs read as recessed
 
-# Hairlines. The top edge is brighter than the body: that asymmetry is what reads
-# as a lit pane of glass rather than a flat translucent rectangle.
+# Hairlines.
 EDGE = "rgba(255, 255, 255, 0.12)"
 EDGE_HI = "rgba(255, 255, 255, 0.22)"
 EDGE_SOFT = "rgba(255, 255, 255, 0.07)"
 
-# --- text ---------------------------------------------------------------------
 LABEL = "#FFFFFF"
 LABEL_2 = "rgba(235, 235, 245, 0.68)"
 LABEL_3 = "rgba(235, 235, 245, 0.42)"
 
-# --- system accents -----------------------------------------------------------
-# The interface is deliberately neutral; these are the only accents in use. Blue marks
-# the one primary action (send), green the copyable suggestions, orange a caution, red
-# the one destructive control.
+# The interface is deliberately neutral; these are the only accents in use.
 BLUE = "#0A84FF"
 BLUE_HI = "#4DA6FF"
 GREEN = "#30D158"
@@ -45,9 +37,7 @@ def tint(hex_colour: str, alpha: float) -> str:
     return f"rgba({r}, {g}, {b}, {alpha})"
 
 
-# --- window gradients ---------------------------------------------------------
-# Three stops read top-left to bottom-right. Alpha stays high enough that text over
-# the glass keeps its contrast whatever is behind the window.
+# Three stops read top-left to bottom-right.
 GRADIENTS: dict[str, tuple[str, str, str]] = {
     "graphite": ("rgba(44, 44, 54, 0.90)", "rgba(30, 30, 38, 0.90)",
                  "rgba(22, 22, 28, 0.92)"),
@@ -78,24 +68,20 @@ def gradient_stops(name: str) -> tuple[str, str, str]:
     return GRADIENTS.get(name, GRADIENTS[DEFAULT_GRADIENT])
 
 
-# --- geometry -----------------------------------------------------------------
-# Generous radii throughout: the reference language rounds far more than a typical
-# desktop app, and a card at 18px next to a window at 22px reads as a rectangle.
+# Generous radii throughout: the reference language rounds far more than a typical desktop.
 R_WINDOW = 28
 R_CARD = 24
 R_CONTROL = 18
 R_PILL = 22
 
-# --- type ---------------------------------------------------------------------
-# San Francisco first: Apple does not license it for redistribution, so it cannot be
-# bundled, but naming it first means it is picked up automatically the moment the user
-# installs it. Segoe UI Variable Text is the closest thing Windows ships.
+# SF first if installed. Apple does not allow it to be redistributed, so Inter ships
+# instead: it is the closest open alternative and loads from assets/fonts at startup.
 FONT_STACK = (
     '"SF Pro Text", "SF Pro Display", "SF Pro", "SF UI Text", '
+    '"Inter Variable Text", "Inter Variable", "Inter", '
     '"Segoe UI Variable Text", "Segoe UI", sans-serif'
 )
-# Windows 11's icon font. Consistent stroke weight and optical sizing, unlike the
-# arbitrary Unicode glyphs it replaces.
+# Windows 11's icon font.
 ICON_FONT = '"Segoe Fluent Icons", "Segoe MDL2 Assets"'
 
 
@@ -104,8 +90,7 @@ class Icon:
 
     PAUSE = ""
     PLAY = ""
-    # Delete (a bin) rather than Clear, whose glyph is an X in a box and reads as a
-    # second close button sitting next to the real one.
+    # Delete (a bin) rather than Clear, whose glyph is an X in a box.
     CLEAR = ""
     OPACITY_UP = ""     # Brightness
     OPACITY_DOWN = ""   # QuietHours
@@ -437,3 +422,19 @@ def stylesheet(font_size: int, font_family: str = "",
         padding: 5px 9px;
     }}
     """
+
+
+def load_bundled_fonts() -> list[str]:
+    """Register the fonts in assets/fonts so no installation is needed."""
+    from PySide6.QtGui import QFontDatabase
+
+    families: list[str] = []
+    folder = Path(__file__).resolve().parents[2] / "assets" / "fonts"
+    if not folder.is_dir():
+        return families
+
+    for path in sorted(folder.glob("*.tt[fc]")) + sorted(folder.glob("*.otf")):
+        font_id = QFontDatabase.addApplicationFont(str(path))
+        if font_id != -1:
+            families.extend(QFontDatabase.applicationFontFamilies(font_id))
+    return families

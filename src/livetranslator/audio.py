@@ -15,7 +15,7 @@ import soxr
 log = logging.getLogger(__name__)
 
 TARGET_RATE = 16_000
-# 20 ms at 16 kHz. WebRTC VAD only accepts 10/20/30 ms frames.
+# 20 ms at 16 kHz.
 FRAME_SAMPLES = 320
 
 
@@ -114,11 +114,9 @@ class LoopbackCapture:
         self._tail = np.zeros(0, dtype=np.float32)
         self._lock = threading.Lock()
         self._paused = False
-        # Monotonic deadline before which incoming audio is discarded. Used to ignore
-        # the app's own interface sounds, which play through the device we capture.
+        # Monotonic deadline before which incoming audio is discarded.
         self._suppress_until = 0.0
 
-    # ---------------------------------------------------------------- lifecycle
 
     def start(self) -> None:
         self._pa = pyaudio.PyAudio()
@@ -129,8 +127,7 @@ class LoopbackCapture:
                 self.device.rate, TARGET_RATE, 1, dtype="float32", quality="HQ"
             )
 
-        # ~20 ms of input audio per callback, so latency stays low but we are not
-        # waking the callback thread excessively.
+        # ~20 ms of input audio per callback, so latency stays low but we are not waking.
         frames_per_buffer = max(160, int(self.device.rate * 0.02))
 
         try:
@@ -171,7 +168,6 @@ class LoopbackCapture:
     def __exit__(self, *_exc: object) -> None:
         self.stop()
 
-    # ------------------------------------------------------------------ control
 
     def set_paused(self, paused: bool) -> None:
         """Stop publishing frames without tearing down the stream."""
@@ -200,7 +196,6 @@ class LoopbackCapture:
             except queue.Empty:
                 return
 
-    # ------------------------------------------------------------------ capture
 
     def _on_audio(self, in_data, _frame_count, _time_info, _status):  # noqa: ANN001
         """PortAudio callback. Must return promptly - no blocking work here."""
@@ -208,8 +203,7 @@ class LoopbackCapture:
             if self._paused:
                 return None, pyaudio.paContinue
             if time.monotonic() < self._suppress_until:
-                # Keep the resampler fed so its phase stays continuous, but publish
-                # nothing: this window contains our own UI sounds.
+                # Keep the resampler fed so its phase stays continuous.
                 self._tail = np.zeros(0, dtype=np.float32)
                 return None, pyaudio.paContinue
 

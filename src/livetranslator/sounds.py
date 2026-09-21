@@ -17,8 +17,7 @@ RATE = 44_100
 
 # name -> (build function arguments); durations in seconds.
 _SPECS: dict[str, dict] = {
-    # Hover: barely there. It fires constantly as the pointer crosses the window, so
-    # it has to sit at the edge of perception or it becomes maddening.
+    # Hover: barely there.
     "hover": {"freqs": [(2100.0, 1.0)], "duration": 0.016, "gain": 0.05, "decay": 40.0},
     # Chrome buttons: a dry, high tap.
     "tap": {"freqs": [(1180.0, 1.0)], "duration": 0.030, "gain": 0.16, "decay": 26.0},
@@ -139,8 +138,7 @@ class SoundBoard:
         if path is None or not path.is_file():
             return
 
-        # winsound plays one sound at a time, so a stream of hover events would cut
-        # off the click or copy cue the user actually cares about.
+        # winsound plays one sound at a time, so a stream of hover events would cut off the.
         now = time.monotonic()
         if name == "hover":
             if now < self._quiet_until or now - self._last_hover < 0.09:

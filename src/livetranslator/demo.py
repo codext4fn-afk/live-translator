@@ -7,8 +7,7 @@ from .config import Config
 from .overlay import Overlay, timestamp
 from .suggest import Reply
 
-# Deliberately spans Latin, CJK and RTL scripts, since font fallback is the thing
-# most likely to be broken on a given Windows install.
+# Deliberately spans Latin, CJK and RTL scripts.
 SAMPLES = [
     (
         "es", 0.98,

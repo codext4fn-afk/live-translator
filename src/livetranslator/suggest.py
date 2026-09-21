@@ -24,8 +24,7 @@ _TRANSLATION_RE = re.compile(
 # Anything that is not a word character, for comparing two sentences by their words.
 _WORD_RE = re.compile(r"[^\w]+", flags=re.UNICODE)
 
-# Whisper reports ISO 639-1. Names read better in a prompt than bare codes, and the
-# model follows "reply in Portuguese" more reliably than "reply in pt".
+# Whisper reports ISO 639-1.
 _LANGUAGE_NAMES = {
     "ar": "Arabic", "bg": "Bulgarian", "bn": "Bengali", "cs": "Czech",
     "da": "Danish", "de": "German", "el": "Greek", "en": "English",
@@ -79,9 +78,7 @@ def _echoes_source(text: str, source: str) -> bool:
     return SequenceMatcher(None, a, b).ratio() > 0.90
 
 
-# Worked examples, because a bare instruction to "write it in English letters"
-# produces guesswork at 4B - the model tends to invent a plausible-sounding string
-# from the meaning instead of reading the characters.
+# Worked examples, because a bare instruction to "write it in English letters" produces.
 _ROMANISATION_EXAMPLES: dict[str, str] = {
     "ja": "こんにちは → kon-ni-chi-wa · 待ってて → mat-te-te · 2分 → ni-fun",
     "zh": "你好 → ni-hao · 谢谢 → xie-xie · 等一下 → deng-yi-xia",
@@ -163,8 +160,7 @@ class Suggestion:
 
 
 def _response_schema(count: int, *, romanise: bool, translate: bool = True) -> dict:
-    # Property order is preserved and honoured by Ollama's grammar, so `translation`
-    # is generated first - which is what makes early display possible.
+    # Property order is preserved and honoured by Ollama's grammar.
     if romanise:
         item_properties: dict[str, dict] = {
             "text": {"type": "string"},
@@ -190,8 +186,7 @@ def _response_schema(count: int, *, romanise: bool, translate: bool = True) -> d
         },
     }
 
-    # When the speaker's language is one the user already reads, the translation field
-    # is never displayed.
+    # When the speaker's language is one the user already reads.
     if not translate:
         return {
             "type": "object",
@@ -302,7 +297,6 @@ class _IncrementalParser:
         events: list[SuggestEvent] = []
 
         # A reasoning model may still open a <think> block despite think=false.
-        # Ignore everything until it closes.
         visible = _THINK_RE.sub("", self._buf)
         if _THINK_OPEN_RE.search(visible):
             return events
@@ -373,8 +367,7 @@ def _coerce_reply(obj: object) -> Reply | None:
     text = obj.get("text") or obj.get("reply") or obj.get("native")
     if not isinstance(text, str) or not text.strip():
         return None
-    # A model that mis-slots a field tends to echo the field's own name. Those values
-    # are never a real reply, so drop the item rather than show it.
+    # A model that mis-slots a field tends to echo the field's own name.
     if text.strip().casefold() in {"text", "reply", "gloss", "meaning", "say"}:
         return None
     meaning = obj.get("meaning") or obj.get("gloss") or obj.get("english") or ""
@@ -407,8 +400,7 @@ class Suggester:
         self.num_ctx = num_ctx
         self.temperature = temperature
 
-        # Generous connect budget: the first request after `keep_alive` expires has to
-        # wait for several GB to be paged back into VRAM.
+        # Generous connect budget: the first request after `keep_alive` expires has to wait.
         self._client = httpx.Client(
             base_url=self.host,
             timeout=httpx.Timeout(timeout_s, connect=10.0, read=timeout_s),
@@ -423,7 +415,6 @@ class Suggester:
         """Change the language translations and glosses are produced in."""
         self.my_language = name
 
-    # --------------------------------------------------------------- diagnostics
 
     def health(self) -> tuple[bool, str]:
         """Check the server is up and the configured model is present."""
@@ -499,7 +490,6 @@ class Suggester:
                 )
             return
 
-    # ------------------------------------------------------------------- prompts
 
     def _romanisation_rule(self, code: str, language: str) -> str:
         return (
@@ -612,7 +602,6 @@ class Suggester:
             body["think"] = False
         return body
 
-    # -------------------------------------------------------------------- request
 
     def stream(
         self,
@@ -649,8 +638,7 @@ class Suggester:
             )
             return
 
-        # Recover anything the incremental pass missed - e.g. the model emitted
-        # `replies` before `translation`, or closed the array in the final chunk.
+        # Recover anything the incremental pass missed - e.g.
         yield from self._reconcile(parser, translate=translate, started=started)
         yield SuggestEvent(kind="done", latency_s=time.monotonic() - started)
 
@@ -731,7 +719,6 @@ class Suggester:
                     kind="reply", reply=reply, latency_s=time.monotonic() - started
                 )
 
-    # ----------------------------------------------------------------- outgoing
 
     def translate_outgoing(
         self,
@@ -744,8 +731,7 @@ class Suggester:
         history = history or []
         result = self._outgoing_once(text, target_code=target_code, history=history)
 
-        # Two ways the model silently fails to translate: it answers in the wrong
-        # script, or it hands the input straight back.
+        # Two ways the model silently fails to translate: it answers in the wrong script.
         if result.ok and _wrong_script(result.natural, target_code):
             reason = "wrong script"
         elif result.ok and _echoes_source(result.natural, text):
@@ -793,9 +779,7 @@ class Suggester:
                 "that may contain English letters. Writing the translation itself in "
                 "English letters is a failure.\n"
             )
-            # Asking for a Latin-letter field alongside the translation makes a 4B
-            # model write the translation in Latin letters too - or skip translating
-            # and just romanise the input.
+            # Asking for a Latin-letter field alongside the translation makes a 4B model.
             shape = (
                 '\nShape: {"translation": "<in ' + target + ', in its own script>", '
                 '"say": "<that same sentence in English letters>", "note": ""}\n'
@@ -844,8 +828,7 @@ class Suggester:
             "format": _outgoing_schema(romanise=romanise),
             "keep_alive": self.keep_alive,
             "options": {
-                # Near-deterministic. This is transcription between languages, not
-                # writing: sampling variety here just means drifting from the input.
+                # Near-deterministic.
                 "temperature": 0.15,
                 "num_ctx": self.num_ctx,
                 "num_predict": 220,

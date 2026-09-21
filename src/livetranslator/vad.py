@@ -88,8 +88,7 @@ class EnergyVad:
             self._floor = level
             return False
         speech = level > self._floor + self._margin
-        # Track quiet frames quickly, loud frames barely - so speech does not raise
-        # the floor out from under itself.
+        # Track quiet frames quickly, loud frames barely.
         alpha = 0.02 if speech else 0.15
         self._floor += alpha * (level - self._floor)
         return speech
@@ -210,8 +209,7 @@ class Segmenter:
 
     def reset(self) -> None:
         self._active = False
-        # Rebind rather than clear(): _finish holds a reference to this list, and
-        # clearing in place would empty the utterance it is about to return.
+        # Rebind rather than clear(): _finish holds a reference to this list.
         self._collected = []
         self._silence_run = 0
         self._voiced_frames = 0
@@ -267,15 +265,12 @@ class Segmenter:
             return None
         return self._finish(timed_out=True)
 
-    # ------------------------------------------------------------------ internals
 
     def _begin(self) -> None:
         self._active = True
-        # The pre-roll already contains the onset frames, so this does not duplicate
-        # audio - it just prepends the moment before speech crossed the threshold.
+        # The pre-roll already contains the onset frames.
         self._collected = list(self._pre_roll)
-        # Carry over only the frames the VAD actually called speech; the onset test
-        # is a ratio, so some frames in the window were silence.
+        # Carry over only the frames the VAD actually called speech.
         self._voiced_frames = sum(self._onset)
         self._pre_roll.clear()
         self._onset.clear()
@@ -287,16 +282,14 @@ class Segmenter:
         frames = list(self._collected)
         voiced = self._voiced_frames
         started = self._started_at
-        # Trim the tail that actually triggered the cut, which is the shorter one when
-        # the utterance was closed on a micro-pause.
+        # Trim the tail that actually triggered the cut.
         silence_tail = self._required_silence()
         self.reset()
 
         if not frames or voiced < self._min_speech_frames:
             return None
 
-        # Drop the trailing silence that triggered the cut; Whisper does not need it
-        # and it inflates decode time.
+        # Drop the trailing silence that triggered the cut.
         if not timed_out and silence_tail < len(frames):
             keep = len(frames) - max(0, silence_tail - 2)
             frames = frames[:keep]

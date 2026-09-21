@@ -22,5 +22,9 @@ redistributed here. Each remains under its own licence:
 Segoe UI Variable and Segoe Fluent Icons are Microsoft fonts included with
 Windows. They are used, not redistributed.
 
-San Francisco is an Apple typeface. It is named first in the font stack so that it
-is used where already installed, but it is not bundled with this project.
+Inter is bundled in assets/fonts under the SIL Open Font License 1.1. See
+assets/fonts/Inter-LICENSE.txt.
+  Inter (OFL-1.1)                   https://github.com/rsms/inter
+
+San Francisco is an Apple typeface. It is named first in the font stack so it is used
+where already installed. Apple does not permit redistribution, so it is not bundled.
