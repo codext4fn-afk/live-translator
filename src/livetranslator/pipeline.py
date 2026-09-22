@@ -19,7 +19,6 @@ from .vad import Segmenter, Utterance
 
 log = logging.getLogger(__name__)
 
-# Suggestions are only worth having while they are current.
 _MAX_PENDING_SUGGESTIONS = 3
 
 
@@ -38,13 +37,12 @@ class Pipeline:
 
         self._stop = threading.Event()
         self._ready = threading.Event()
-        # Set once the warmup thread has finished, successfully or not.
+        # Set once the warmup thread has finished, successfully or not
         self._suggester_ready = threading.Event()
         self._threads: list[threading.Thread] = []
 
         self._utterances: queue.Queue[Utterance] = queue.Queue(maxsize=8)
         self._work: queue.Queue[tuple[str, str, Card]] = queue.Queue()
-        # Typed messages waiting to be rendered into the other person's language.
         self._outgoing: queue.Queue[tuple[str, str]] = queue.Queue()
 
         self._capture: LoopbackCapture | None = None
@@ -52,7 +50,7 @@ class Pipeline:
         self._suggester: Suggester | None = None
         self._segmenter: Segmenter | None = None
 
-        # Recent turns given to the model as context, newest last.
+        # Recent turns given to the model as context, newest last
         self._history: collections.deque[str] = collections.deque(
             maxlen=max(0, cfg.suggest.context_turns)
         )
@@ -111,10 +109,8 @@ class Pipeline:
 
         code = _language_code(name)
         if code and code != previous:
-            # Add the new language, never remove one. These lists used to be replaced
-            # wholesale, so picking a language in Settings silently stopped English
-            # being ignored while config.toml still said it was. Anything already in
-            # here is a language the user reads, and switching does not change that.
+            # Add the new language, never remove one: replacing these lists wholesale
+            # once stopped English being ignored while config.toml still said it was
             for attr in ("ignore_languages", "skip_translation_for"):
                 current = list(getattr(self.cfg.languages, attr))
                 if code not in current:
@@ -124,7 +120,7 @@ class Pipeline:
 
             allowed = set(self.cfg.languages.allowed)
             if allowed:
-                # Keep it detectable, or its speech gets forced into another language.
+                # Keep it detectable, or its speech gets forced into another language
                 allowed.add(code)
                 self.cfg.languages.allowed = sorted(allowed)
                 config_mod.save_value(self.cfg.source_path, "languages", "allowed",
@@ -209,12 +205,12 @@ class Pipeline:
             self._status("startup failed - see logs\\live-translator.log")
             return
 
-        # Audio is live now; the suggester may still be warming.
+        # Audio is live now; the suggester may still be warming
         self._ready.set()
         self._spawn(self._segment_loop, "segment")
         self._spawn(self._asr_loop, "asr")
         self._spawn(self._suggest_loop, "suggest")
-        # Its own thread so typing stays responsive while a suggestion is generating.
+        # Its own thread so typing stays responsive while a suggestion is generating
         self._spawn(self._compose_loop, "compose")
         self._spawn(self._status_loop, "status")
 
@@ -287,7 +283,6 @@ class Pipeline:
 
             code = (result.language or "").lower()
             if code in {c.lower() for c in self.cfg.languages.ignore_languages}:
-                # Dropped before any model call.
                 log.info("ignored %s(%.2f): %r", code, result.language_prob,
                          result.text[:60])
                 continue
@@ -302,7 +297,7 @@ class Pipeline:
             translate = code not in {
                 c.lower() for c in self.cfg.languages.skip_translation_for
             }
-            # Whoever spoke last is who the compose box will translate towards.
+            # Whoever spoke last is who the compose box will translate towards
             if code:
                 self.overlay.post(lambda c=code: self.overlay.set_target_language(c))
             meta = f"{timestamp()}  ·  {result.decode_s:.1f}s"
@@ -380,7 +375,7 @@ class Pipeline:
             elapsed = time.monotonic() - started
             log.info("suggested in %.2fs (%d queued)", elapsed, self._work.qsize())
             if elapsed > 8.0:
-                # Almost always the model having been evicted from VRAM.
+                # Almost always the model having been evicted from VRAM
                 log.warning("that generation was slow; checking model placement")
                 suggester.log_placement()
 
@@ -433,7 +428,6 @@ class Pipeline:
 
             self.overlay.post(lambda r=result: self.overlay.show_outgoing(r))
             if result.ok:
-                # Record what the user meant, in their own words: the history is read back.
                 self._remember(f"you: {text}")
 
 
@@ -508,11 +502,10 @@ def run(cfg: Config) -> None:
         lambda name: config_mod.save_ui_value(cfg.source_path, "gradient", name)
     )
 
-    # Pipeline registers its own pause/quit/copy hooks on construction.
     pipeline = Pipeline(cfg, overlay)
-    # Hooks that call into the pipeline have to be attached after it exists.
+    # Hooks that call into the pipeline have to be attached after it exists
     overlay.set_language_hook(pipeline.set_my_language)
-    # Interface sounds leave the same speakers we record, so mute capture while they play.
+    # Interface sounds leave the same speakers we record, so mute capture while they play
     board.set_playback_listener(pipeline.suppress_capture)
 
     if cfg.ui.start_paused:
@@ -524,5 +517,5 @@ def run(cfg: Config) -> None:
     finally:
         pipeline.stop()
         overlay.destroy()
-        # Give daemon threads a moment to notice the stop flag before interpreter exit.
+        # Give daemon threads a moment to notice the stop flag before interpreter exit
         time.sleep(0.1)

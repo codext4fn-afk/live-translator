@@ -1,4 +1,4 @@
-"""In-window settings: pick the window gradient."""
+"""In-window settings: window gradient and the language you read."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class Swatch(PressableFrame):
 
     def _apply_fill(self) -> None:
         g0, g1, g2 = theme.gradient_stops(self.name)
-        # Painted inline: each swatch needs its own colours.
+        # Painted inline: each swatch needs its own colours
         self.setStyleSheet(
             f"#swatch, #swatchActive {{ background: qlineargradient("
             f"x1:0, y1:0, x2:0.4, y2:1, stop:0 {g0}, stop:0.55 {g1}, stop:1 {g2}); }}"

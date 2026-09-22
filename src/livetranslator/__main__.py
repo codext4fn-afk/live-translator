@@ -63,7 +63,7 @@ def setup_logging(debug: bool) -> None:
     console.setFormatter(logging.Formatter("%(levelname)-7s %(message)s"))
     root.addHandler(console)
 
-    # These are chatty at DEBUG and never interesting here.
+    # chatty at DEBUG, never useful here
     for noisy in ("httpx", "httpcore", "faster_whisper"):
         logging.getLogger(noisy).setLevel(max(level, logging.INFO))
 
@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
     for warning in warnings:
         log.warning("config: %s", warning)
 
-    # CLI overrides win over the file.
+    # CLI overrides win over the file
     if args.device is not None:
         cfg.audio.device = args.device
     if args.model is not None:

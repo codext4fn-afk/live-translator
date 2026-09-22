@@ -21,7 +21,7 @@ if (-not (Test-Path $python)) {
     exit 1
 }
 
-# Non-ASCII transcripts must survive the console encoding.
+# Non-ASCII transcripts must survive the console encoding
 $env:PYTHONIOENCODING = "utf-8"
 $env:PYTHONPATH = Join-Path $root "src"
 
@@ -30,9 +30,9 @@ if ($args -contains "--check") {
     exit $LASTEXITCODE
 }
 
-# --list-devices and --debug write to the console, so they need a console host.
+# --list-devices and --debug write to the console, so they need a console host
 # Everything else is a GUI, so use pythonw to avoid a stray black window behind
-# the overlay.
+# the overlay
 $needsConsole = ($args -contains "--list-devices") -or ($args -contains "--debug") -or ($args -contains "--version")
 $interpreter = if ($needsConsole -or -not (Test-Path $pythonw)) { $python } else { $pythonw }
 

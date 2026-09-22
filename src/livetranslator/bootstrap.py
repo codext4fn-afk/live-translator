@@ -8,7 +8,7 @@ from pathlib import Path
 
 _PREPARED = False
 
-# Subdirectories of the `nvidia` namespace package that ship Windows DLLs.
+# Subdirectories of the `nvidia` namespace package that ship Windows DLLs
 _NVIDIA_DLL_SUBDIRS = ("cublas", "cudnn", "cuda_runtime", "cufft")
 
 
@@ -45,7 +45,7 @@ def prepare_cuda() -> list[str]:
         except (OSError, AttributeError):
             continue
         registered.append(str(bin_dir))
-        # Some CTranslate2 builds resolve via PATH rather than the DLL directory list.
+        # Some CTranslate2 builds resolve via PATH rather than the DLL directory list
         os.environ["PATH"] = str(bin_dir) + os.pathsep + os.environ.get("PATH", "")
 
     _PREPARED = True
@@ -151,8 +151,8 @@ def resolve_backend(device: str, compute_type: str, model: str,
         compute_type = "float16" if device == "cuda" else "int8"
 
     if model in ("", "auto"):
-        # large-v3-turbo is 2.3x slower than real time on a six-core CPU; small is
-        # about 0.6x, which keeps up with a conversation.
+        # large-v3-turbo is 2.3x slower than real time on a six-core CPU, small is
+        # about 0.6x, which keeps up with a conversation
         model = "large-v3-turbo" if device == "cuda" else "small"
 
     if cpu_threads <= 0:

@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-# Standard easing for interface motion: quick out of the gate, gentle at rest.
 EASE_OUT = QEasingCurve.Type.OutCubic
 EASE_IN_OUT = QEasingCurve.Type.InOutCubic
 
@@ -69,7 +68,7 @@ class Ripple(QObject):
               duration: int = 420) -> None:
         self._origin = origin
         rect = self._host.rect()
-        # Reach the furthest corner so the ripple always covers the whole surface.
+        # Reach the furthest corner so the ripple always covers the whole surface
         far = max(
             (origin - rect.topLeft()).manhattanLength(),
             (origin - rect.topRight()).manhattanLength(),
@@ -121,7 +120,6 @@ class _RippleMixin:
             self._cues.click()
 
     def enterEvent(self, event) -> None:  # noqa: ANN001 - Qt signature
-        # A soft bloom from the middle, much fainter than a click.
         self._hover_ripple.start(self.rect().center(), peak=0.09, duration=320)
         if self._cues is not None:
             self._cues.hover()
@@ -225,7 +223,6 @@ class PixelSplash(QObject):
 
         self._grow.stop()
         self._fade.stop()
-        # Bounded radius.
         self._grow.setDuration(260)
         self._grow.setStartValue(max(10.0, self._radius * 0.4))
         self._grow.setEndValue(float(self.MAX_RADIUS))
@@ -250,7 +247,7 @@ class PixelSplash(QObject):
             return
 
         painter.save()
-        # No antialiasing: crisp cell edges are the whole point.
+        # No antialiasing: crisp cell edges are the whole point
         painter.setRenderHint(QPainter.Antialiasing, False)
         clip = QPainterPath()
         clip.addRoundedRect(self._host.rect(), corner_radius, corner_radius)
@@ -265,7 +262,7 @@ class PixelSplash(QObject):
         top = max(rect.top(), int(self._origin.y() - radius))
         bottom = min(rect.bottom(), int(self._origin.y() + radius))
 
-        # Snap to a global grid so blocks do not shimmer as the radius grows.
+        # Snap to a global grid so blocks do not shimmer as the radius grows
         left -= left % cell
         top -= top % cell
 
@@ -277,13 +274,12 @@ class PixelSplash(QObject):
                 if distance > radius:
                     continue
 
-                # Solid at the centre, thinning outwards: a glow under the cursor.
                 t = distance / radius if radius else 0.0
                 weight = (1.0 - t) ** 1.25
-                # Deterministic per-cell jitter gives the ragged, dithered edge.
+                # Deterministic per-cell jitter gives the ragged, dithered edge
                 jitter = (((x * 73856093) ^ (y * 19349663)) >> 4) & 0xFF
                 weight *= 0.62 + (jitter / 255.0) * 0.38
-                # Drop cells towards the rim so the boundary breaks up into pixels instead.
+                # Drop cells towards the rim so the boundary breaks up into pixels instead
                 if t > 0.55 and jitter < int((t - 0.55) * 460):
                     continue
 
@@ -333,13 +329,13 @@ def fade_in(widget: QWidget, *, duration: int = 220,
     animation.setStartValue(start)
     animation.setEndValue(1.0)
     animation.setEasingCurve(EASE_OUT)
-    # Dropping the effect afterwards restores native painting.
+    # Dropping the effect afterwards restores native painting
     animation.finished.connect(lambda: widget.setGraphicsEffect(None))
     animation.start()
     return animation
 
 
-# Qt's "no maximum" sentinel.
+# Qt's "no maximum" sentinel
 _UNCONSTRAINED = 16_777_215
 
 
@@ -357,12 +353,11 @@ def reveal(widget: QWidget, *, duration: int = 260) -> None:
     animation.setEasingCurve(EASE_OUT)
     animation.setStartValue(0)
     animation.setEndValue(target)
-    # Release the constraint afterwards, or the card can never grow when its replies stream.
+    # Release the constraint afterwards, or the card can never grow when its replies stream
     animation.finished.connect(lambda: widget.setMaximumHeight(_UNCONSTRAINED))
     animation.start()
     widget._entrance = animation  # keep a reference alive for the duration
 
-    # Safety net.
     QTimer.singleShot(duration + 500,
                       lambda: widget.setMaximumHeight(_UNCONSTRAINED))
 
@@ -401,7 +396,7 @@ class Pulse:
         if self._animation is not None:
             self._animation.stop()
             self._animation = None
-        # Detaching destroys the effect, which is why nothing here is cached.
+        # Detaching destroys the effect, which is why nothing here is cached
         try:
             self._widget.setGraphicsEffect(None)
         except RuntimeError:
@@ -463,7 +458,7 @@ def collapse(widget: QWidget, *, duration: int = 200,
     fade.start()
     shrink.start()
     widget._collapse = (fade, shrink)
-    # Same safety net as reveal: never leave a widget clamped to zero height.
+    # never leave a widget clamped to zero height
     QTimer.singleShot(duration + 500, lambda: widget.setMaximumHeight(_UNCONSTRAINED))
 
 

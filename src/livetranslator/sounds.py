@@ -15,27 +15,19 @@ log = logging.getLogger(__name__)
 
 RATE = 44_100
 
-# name -> (build function arguments); durations in seconds.
+# name -> (build function arguments); durations in seconds
 _SPECS: dict[str, dict] = {
-    # Hover: barely there.
     "hover": {"freqs": [(2100.0, 1.0)], "duration": 0.016, "gain": 0.05, "decay": 40.0},
-    # Chrome buttons: a dry, high tap.
     "tap": {"freqs": [(1180.0, 1.0)], "duration": 0.030, "gain": 0.16, "decay": 26.0},
-    # Reply / row click: slightly rounder.
     "click": {"freqs": [(880.0, 1.0), (1760.0, 0.25)], "duration": 0.040,
               "gain": 0.18, "decay": 22.0},
-    # Copied to clipboard: a rising two-note confirmation.
     "copy": {"sequence": [(920.0, 0.045), (1380.0, 0.075)], "gain": 0.17, "decay": 16.0},
-    # Sending something to translate: a short upward sweep.
     "send": {"sweep": (620.0, 1240.0), "duration": 0.090, "gain": 0.16, "decay": 11.0},
-    # Picking the window up and putting it down.
     "grab": {"freqs": [(300.0, 1.0), (150.0, 0.5)], "duration": 0.045,
              "gain": 0.13, "decay": 24.0},
     "drop": {"freqs": [(220.0, 1.0), (110.0, 0.5)], "duration": 0.055,
              "gain": 0.13, "decay": 20.0},
-    # A new translation arrived.
     "card": {"sequence": [(1046.5, 0.050), (1568.0, 0.070)], "gain": 0.13, "decay": 14.0},
-    # Something went wrong.
     "error": {"sequence": [(440.0, 0.070), (330.0, 0.090)], "gain": 0.15, "decay": 12.0},
 }
 
@@ -47,7 +39,7 @@ def _envelope(n: int, decay: float) -> np.ndarray:
     envelope = np.exp(-decay * t)
     ramp = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, min(attack_samples, n))))
     envelope[: ramp.size] *= ramp
-    # Always land on silence so consecutive plays do not pop.
+    # Always land on silence so consecutive plays do not pop
     release = max(1, int(0.006 * RATE))
     if n > release:
         envelope[-release:] *= np.linspace(1.0, 0.0, release)
@@ -69,7 +61,7 @@ def _tone(spec: dict) -> np.ndarray:
         start, end = spec["sweep"]
         n = int(spec["duration"] * RATE)
         t = np.arange(n) / RATE
-        # Linear chirp: integrate the instantaneous frequency for the phase.
+        # Linear chirp: integrate the instantaneous frequency for the phase
         freq = np.linspace(start, end, n)
         phase = 2 * np.pi * np.cumsum(freq) / RATE
         wave_data = np.sin(phase) * _envelope(n, decay)
@@ -125,7 +117,7 @@ class SoundBoard:
         for name, spec in _SPECS.items():
             samples = _tone(spec) * self.volume
             path = self._dir / f"{name}.wav"
-            # Regenerate only when missing or stale, so startup stays fast.
+            # Regenerate only when missing or stale, so startup stays fast
             if not path.is_file() or path.stat().st_size < 64:
                 _write_wav(path, samples)
             self._paths[name] = path
@@ -138,7 +130,7 @@ class SoundBoard:
         if path is None or not path.is_file():
             return
 
-        # winsound plays one sound at a time, so a stream of hover events would cut off the.
+        # winsound plays one sound at a time, so hover events need rate limiting
         now = time.monotonic()
         if name == "hover":
             if now < self._quiet_until or now - self._last_hover < 0.09:
@@ -150,7 +142,7 @@ class SoundBoard:
         duration = self._duration_ms.get(name, 80)
         if self._on_play is not None:
             try:
-                # Pad generously: the speaker keeps ringing after the file ends.
+                # Pad generously: the speaker keeps ringing after the file ends
                 self._on_play(duration + 180)
             except Exception:
                 log.debug("playback listener failed", exc_info=True)

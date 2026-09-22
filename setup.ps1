@@ -26,9 +26,9 @@ function Bad($text)  { Write-Host "  FAIL $text" -ForegroundColor Red }
 Say "live-translator setup" "Cyan"
 Say ("=" * 60)
 
-# ---------------------------------------------------------------- config
+# config
 # A fresh clone has no config.toml: it is gitignored so that pulling an update never
-# overwrites anyone's language, device or appearance choices.
+# overwrites anyone's language, device or appearance choices
 $config = Join-Path $root "config.toml"
 $example = Join-Path $root "config.example.toml"
 if (-not (Test-Path $config)) {
@@ -41,9 +41,9 @@ if (-not (Test-Path $config)) {
 } else {
     Ok "config.toml already present - leaving it alone"
 
-    # An existing config predates hardware detection and pins the NVIDIA settings.
+    # An existing config predates hardware detection and pins the NVIDIA settings
     # On an AMD or Intel machine that means a GPU-sized model on the CPU, which is
-    # slower than real time, so move those two keys to auto.
+    # slower than real time, so move those two keys to auto
     $text = Get-Content $config -Raw
     $before = $text
     $text = $text -replace '(?m)^\s*device\s*=\s*"cuda"\s*(#.*)?$', 'device = "auto"'
@@ -56,7 +56,7 @@ if (-not (Test-Path $config)) {
     }
 }
 
-# ---------------------------------------------------------------- python
+# python
 $python = $null
 foreach ($candidate in @(
     "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
@@ -67,7 +67,7 @@ foreach ($candidate in @(
 }
 if (-not $python) {
     $cmd = Get-Command python -ErrorAction SilentlyContinue
-    # Skip the Microsoft Store stub, which is not a real interpreter.
+    # Skip the Microsoft Store stub, which is not a real interpreter
     if ($cmd -and $cmd.Source -notlike "*WindowsApps*") { $python = $cmd.Source }
 }
 if (-not $python) {
@@ -79,7 +79,7 @@ if (-not $python) {
 }
 Ok "python - $python"
 
-# ---------------------------------------------------------------- venv
+# venv
 $venv = Join-Path $root ".venv"
 if ($Force -and (Test-Path $venv)) {
     Say "  removing existing virtual environment..."
@@ -93,14 +93,14 @@ if (-not (Test-Path (Join-Path $venv "Scripts\python.exe"))) {
 $venvPython = Join-Path $venv "Scripts\python.exe"
 Ok "virtual environment - $venv"
 
-# ---------------------------------------------------------------- packages
+# packages
 Say "  installing dependencies (this downloads ~1 GB of CUDA libraries once)..."
 & $venvPython -m pip install --upgrade --quiet pip wheel
 & $venvPython -m pip install --quiet -r (Join-Path $root "requirements.txt")
 if (-not $?) { Bad "dependency install failed"; exit 1 }
 Ok "dependencies installed"
 
-# ---------------------------------------------------------------- ollama
+# ollama
 $ollama = (Get-Command ollama -ErrorAction SilentlyContinue).Source
 if (-not $ollama) {
     $fallback = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
@@ -119,7 +119,7 @@ if (-not $ollama) {
         $configPath = Join-Path $root "config.toml"
         if (Test-Path $configPath) {
             $match = Select-String -Path $configPath -Pattern '^\s*model\s*=\s*"([^"]+)"' -AllMatches
-            # [suggest].model is the second `model =` key in the file ([asr] comes first).
+            # [suggest].model is the second `model =` key in the file ([asr] comes first)
             if ($match.Matches.Count -ge 1) {
                 $SuggestModel = $match[-1].Matches[0].Groups[1].Value
             }
@@ -137,7 +137,7 @@ if (-not $ollama) {
     }
 }
 
-# ---------------------------------------------------------------- verify
+# verify
 Say ""
 Say ("=" * 60)
 Say "Running preflight check..." "Cyan"

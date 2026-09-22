@@ -15,7 +15,7 @@ import soxr
 log = logging.getLogger(__name__)
 
 TARGET_RATE = 16_000
-# 20 ms at 16 kHz.
+# 20 ms at 16 kHz
 FRAME_SAMPLES = 320
 
 
@@ -64,7 +64,7 @@ def list_devices() -> list[DeviceInfo]:
                     name=name,
                     channels=int(info["maxInputChannels"]),
                     rate=int(info["defaultSampleRate"]),
-                    # Loopback names are the output name plus a suffix.
+                    # Loopback names are the output name plus a suffix
                     is_default=bool(default_name) and default_name in name,
                 )
             )
@@ -114,7 +114,7 @@ class LoopbackCapture:
         self._tail = np.zeros(0, dtype=np.float32)
         self._lock = threading.Lock()
         self._paused = False
-        # Monotonic deadline before which incoming audio is discarded.
+        # incoming audio is dropped until this deadline
         self._suppress_until = 0.0
 
 
@@ -127,7 +127,7 @@ class LoopbackCapture:
                 self.device.rate, TARGET_RATE, 1, dtype="float32", quality="HQ"
             )
 
-        # ~20 ms of input audio per callback, so latency stays low but we are not waking.
+        # ~20 ms of input per callback, low latency without waking constantly
         frames_per_buffer = max(160, int(self.device.rate * 0.02))
 
         try:
@@ -203,7 +203,7 @@ class LoopbackCapture:
             if self._paused:
                 return None, pyaudio.paContinue
             if time.monotonic() < self._suppress_until:
-                # Keep the resampler fed so its phase stays continuous.
+                # Keep the resampler fed so its phase stays continuous
                 self._tail = np.zeros(0, dtype=np.float32)
                 return None, pyaudio.paContinue
 

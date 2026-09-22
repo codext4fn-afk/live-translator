@@ -1,24 +1,24 @@
-# Speech recognition. Uses the CTranslate2 backend, so PyTorch is not needed.
+# speech recognition on the CTranslate2 backend, so no PyTorch
 faster-whisper>=1.1.0
 
-# CUDA runtime libraries CTranslate2 links against on Windows.
-# ct2 >= 4.5 needs cuDNN 9. These ship as wheels; bootstrap.py adds them to the
-# DLL search path, which Windows does not do for site-packages on its own.
+# CUDA runtime libraries CTranslate2 links against on Windows. ct2 >= 4.5 needs
+# cuDNN 9, and bootstrap.py puts these wheels on the DLL search path because
+# Windows does not do it for site-packages
 nvidia-cublas-cu12>=12.3
 nvidia-cudnn-cu12>=9.1,<10
 
-# WASAPI loopback capture. A fork of PyAudio that exposes loopback devices.
+# WASAPI loopback capture, a PyAudio fork that exposes loopback devices
 PyAudioWPatch>=0.2.12.7
 
-# Audio maths and resampling.
+# audio maths and resampling
 numpy>=1.26
 soxr>=0.5.0
 
-# Voice activity detection. Prebuilt wheels, so no MSVC toolchain required.
+# voice activity detection, prebuilt wheels so no MSVC toolchain
 webrtcvad-wheels>=2.0.14
 
-# Ollama HTTP client.
+# Ollama HTTP client
 httpx>=0.27
 
-# Overlay UI. Qt gives real rounded corners, translucency and hover states.
+# overlay UI
 PySide6-Essentials>=6.7

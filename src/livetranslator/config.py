@@ -93,7 +93,7 @@ class Config:
     suggest: SuggestConfig = field(default_factory=SuggestConfig)
     ui: UiConfig = field(default_factory=UiConfig)
 
-    # Populated by load(); not read from the file.
+    # Populated by load(); not read from the file
     source_path: Path | None = None
 
 
@@ -204,7 +204,7 @@ def save_value(path: Path | None, section: str, key: str,
     if found is None:
         text = f'{text.rstrip()}\n\n[{section}]\n{key} = {rendered}\n'
     else:
-        # Only touch a key inside this section: the same name may exist in another.
+        # Only touch a key inside this section: the same name may exist in another
         start = found.end()
         next_section = re.search(r"^\s*\[", text[start:], re.MULTILINE)
         end = start + next_section.start() if next_section else len(text)

@@ -17,14 +17,13 @@ log = logging.getLogger(__name__)
 _THINK_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL | re.IGNORECASE)
 _THINK_OPEN_RE = re.compile(r"<think>.*\Z", flags=re.DOTALL | re.IGNORECASE)
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", flags=re.DOTALL)
-# Requires the closing quote, so a half-streamed value never matches.
+# Requires the closing quote, so a half-streamed value never matches
 _TRANSLATION_RE = re.compile(
     r'"translation"\s*:\s*"((?:[^"\\]|\\.)*)"', flags=re.DOTALL
 )
-# Anything that is not a word character, for comparing two sentences by their words.
 _WORD_RE = re.compile(r"[^\w]+", flags=re.UNICODE)
 
-# Whisper reports ISO 639-1.
+# Whisper reports ISO 639-1
 _LANGUAGE_NAMES = {
     "ar": "Arabic", "bg": "Bulgarian", "bn": "Bengali", "cs": "Czech",
     "da": "Danish", "de": "German", "el": "Greek", "en": "English",
@@ -46,7 +45,7 @@ def language_name(code: str) -> str:
     return _LANGUAGE_NAMES.get(code.lower(), code.upper())
 
 
-# Languages whose everyday writing system is not Latin.
+# Languages whose everyday writing system is not Latin
 NON_LATIN_SCRIPTS = frozenset({
     "am", "ar", "as", "bg", "bn", "dv", "el", "fa", "gu", "he", "hi", "hy", "ja",
     "ka", "km", "kn", "ko", "lo", "ml", "mn", "mr", "my", "ne", "or", "pa", "ps",
@@ -78,7 +77,7 @@ def _echoes_source(text: str, source: str) -> bool:
     return SequenceMatcher(None, a, b).ratio() > 0.90
 
 
-# Worked examples, because a bare instruction to "write it in English letters" produces.
+# a bare instruction to write it in English letters is not enough
 _ROMANISATION_EXAMPLES: dict[str, str] = {
     "ja": "こんにちは → kon-ni-chi-wa · 待ってて → mat-te-te · 2分 → ni-fun",
     "zh": "你好 → ni-hao · 谢谢 → xie-xie · 等一下 → deng-yi-xia",
@@ -160,7 +159,7 @@ class Suggestion:
 
 
 def _response_schema(count: int, *, romanise: bool, translate: bool = True) -> dict:
-    # Property order is preserved and honoured by Ollama's grammar.
+    # Property order is preserved and honoured by Ollama's grammar
     if romanise:
         item_properties: dict[str, dict] = {
             "text": {"type": "string"},
@@ -186,7 +185,6 @@ def _response_schema(count: int, *, romanise: bool, translate: bool = True) -> d
         },
     }
 
-    # When the speaker's language is one the user already reads.
     if not translate:
         return {
             "type": "object",
@@ -296,7 +294,7 @@ class _IncrementalParser:
         self._buf += delta
         events: list[SuggestEvent] = []
 
-        # A reasoning model may still open a <think> block despite think=false.
+        # A reasoning model may still open a <think> block despite think=false
         visible = _THINK_RE.sub("", self._buf)
         if _THINK_OPEN_RE.search(visible):
             return events
@@ -367,7 +365,7 @@ def _coerce_reply(obj: object) -> Reply | None:
     text = obj.get("text") or obj.get("reply") or obj.get("native")
     if not isinstance(text, str) or not text.strip():
         return None
-    # A model that mis-slots a field tends to echo the field's own name.
+    # A model that mis-slots a field tends to echo the field's own name
     if text.strip().casefold() in {"text", "reply", "gloss", "meaning", "say"}:
         return None
     meaning = obj.get("meaning") or obj.get("gloss") or obj.get("english") or ""
@@ -400,12 +398,12 @@ class Suggester:
         self.num_ctx = num_ctx
         self.temperature = temperature
 
-        # Generous connect budget: the first request after `keep_alive` expires has to wait.
+        # Generous connect budget: the first request after `keep_alive` expires has to wait
         self._client = httpx.Client(
             base_url=self.host,
             timeout=httpx.Timeout(timeout_s, connect=10.0, read=timeout_s),
         )
-        # Latches off if the server rejects the parameter for this model.
+        # Latches off if the server rejects the parameter for this model
         self._supports_think_flag = True
 
     def close(self) -> None:
@@ -437,7 +435,7 @@ class Suggester:
         return True, f"{self.model} ready"
 
     def _model_present(self, installed: list[str]) -> bool:
-        # Ollama reports "qwen3:4b"; a user may configure "qwen3" meaning the default tag.
+        # Ollama reports "qwen3:4b"; a user may configure "qwen3" meaning the default tag
         wanted = self.model if ":" in self.model else f"{self.model}:latest"
         return any(name in (wanted, self.model) for name in installed)
 
@@ -533,7 +531,7 @@ class Suggester:
                 f"written in {speaker_language}, as text they can send immediately.\n\n"
             )
         else:
-            # The user already reads this language, so there is nothing to translate.
+            # nothing to translate, the user already reads this language
             task = (
                 f"The user reads {speaker_language} perfectly well, so do NOT translate "
                 "the line and do not restate it. Produce only replies: up to "
@@ -594,7 +592,6 @@ class Suggester:
             "options": {
                 "temperature": self.temperature,
                 "num_ctx": self.num_ctx,
-                # Bounds worst-case latency; the schema keeps output compact anyway.
                 "num_predict": 512,
             },
         }
@@ -638,7 +635,7 @@ class Suggester:
             )
             return
 
-        # Recover anything the incremental pass missed - e.g.
+        # recover anything the incremental pass missed
         yield from self._reconcile(parser, translate=translate, started=started)
         yield SuggestEvent(kind="done", latency_s=time.monotonic() - started)
 
@@ -731,7 +728,7 @@ class Suggester:
         history = history or []
         result = self._outgoing_once(text, target_code=target_code, history=history)
 
-        # Two ways the model silently fails to translate: it answers in the wrong script.
+        # two silent failures: the wrong script, or the input handed back
         if result.ok and _wrong_script(result.natural, target_code):
             reason = "wrong script"
         elif result.ok and _echoes_source(result.natural, text):
@@ -749,7 +746,7 @@ class Suggester:
         )
         if retry.ok and not _wrong_script(retry.natural, target_code) \
                 and not _echoes_source(retry.natural, text):
-            # Recover the pronunciation from the first attempt if it was usable.
+            # Recover the pronunciation from the first attempt if it was usable
             if not retry.say and result.say:
                 retry.say = result.say
             return retry
@@ -779,7 +776,7 @@ class Suggester:
                 "that may contain English letters. Writing the translation itself in "
                 "English letters is a failure.\n"
             )
-            # Asking for a Latin-letter field alongside the translation makes a 4B model.
+            # a second Latin-letter field confuses a 4B model, so show the shape
             shape = (
                 '\nShape: {"translation": "<in ' + target + ', in its own script>", '
                 '"say": "<that same sentence in English letters>", "note": ""}\n'
@@ -828,7 +825,6 @@ class Suggester:
             "format": _outgoing_schema(romanise=romanise),
             "keep_alive": self.keep_alive,
             "options": {
-                # Near-deterministic.
                 "temperature": 0.15,
                 "num_ctx": self.num_ctx,
                 "num_predict": 220,

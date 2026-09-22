@@ -30,7 +30,7 @@ class Transcript:
     reject_reason: str = ""
 
 
-# Phrases Whisper emits when the audio contains no speech.
+# Phrases Whisper emits when the audio contains no speech
 _HALLUCINATION_SUBSTRINGS = (
     "thanks for watching",
     "thank you for watching",
@@ -90,7 +90,6 @@ def _normalise(text: str) -> str:
     return _WS_RE.sub(" ", text).strip().casefold()
 
 
-# The blocklists are written above in readable form.
 _BLOCK_SUBSTRINGS: tuple[str, ...] = tuple(
     sorted({n for n in map(_normalise, _HALLUCINATION_SUBSTRINGS) if n})
 )
@@ -110,7 +109,7 @@ def _is_repetitive(text: str, *, max_ratio: float = 0.45) -> bool:
     return max(counts.values()) / len(tokens) > max_ratio
 
 
-# Markers that distinguish "this machine cannot use the GPU" from any other startup failure.
+# separates a machine that cannot use the GPU from any other startup failure
 _CUDA_FAILURE_MARKERS = (
     "cuda",
     "cudnn",
@@ -180,7 +179,7 @@ class Transcriber:
                                        cpu_threads=cpu_threads)
             log.info("model ready in %.1fs", time.monotonic() - started)
         except Exception as exc:
-            # Only a CUDA problem justifies dropping to the CPU.
+            # Only a CUDA problem justifies dropping to the CPU
             if device != "cuda" or not _is_cuda_failure(exc):
                 raise
             log.warning(
@@ -188,7 +187,7 @@ class Transcriber:
                 "latency.",
                 exc,
             )
-            # A GPU-sized model on the CPU runs slower than real time, so step down.
+            # A GPU-sized model on the CPU runs slower than real time, so step down
             self.device, self.compute_type = "cpu", "int8"
             self.cpu_threads = min(8, bootstrap.physical_cores())
             if model in ("large-v3-turbo", "large-v3", "large-v2", "medium"):
@@ -215,11 +214,8 @@ class Transcriber:
         started = time.monotonic()
         audio_s = len(samples) / TARGET_RATE
 
-        # Restrict detection to languages the user actually encounters.
         detected_prob = 0.0
-        # With one language to choose from there is nothing to detect. Skipping
-        # detection halves transcription time on a CPU, where it is a full extra
-        # encoder pass: 1.6s instead of 3.0s for a six second clip.
+        # one candidate language means nothing to detect, which halves CPU time
         if language is None and len(self.allowed_languages) == 1:
             language = next(iter(self.allowed_languages))
             detected_prob = 1.0
@@ -241,9 +237,9 @@ class Transcriber:
             vad_filter=trim_silence,
             vad_parameters={"min_silence_duration_ms": 300} if trim_silence else None,
             condition_on_previous_text=False,
-            # A single temperature rather than a fallback ladder: a retry at 0.2/0.4 only.
+            # one temperature rather than a fallback ladder, plus a single retry
             temperature=0.0,
-            # Segment timestamps are never displayed, and not emitting them is ~19% faster.
+            # Segment timestamps are never displayed, and not emitting them is ~19% faster
             without_timestamps=True,
             no_speech_threshold=self.max_no_speech_prob,
             log_prob_threshold=self.min_avg_logprob,
@@ -270,7 +266,6 @@ class Transcriber:
         result = Transcript(
             text=text,
             language=info.language or "",
-            # When the language was chosen from the shortlist.
             language_prob=detected_prob or float(info.language_probability or 0.0),
             avg_logprob=avg_logprob,
             no_speech_prob=worst_no_speech,
@@ -307,7 +302,7 @@ class Transcriber:
         """Return a human-readable reason to discard this transcript, or ""."""
         normalised = _normalise(r.text)
 
-        # Whisper guesses on very short clips - both the words and the language.
+        # Whisper guesses on very short clips - both the words and the language
         if r.audio_s < self.min_audio_s:
             return f"fragment ({r.audio_s:.2f}s of audio)"
         if not normalised:

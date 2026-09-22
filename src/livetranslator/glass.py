@@ -91,7 +91,7 @@ def _apply_accent(hwnd: int, *, tint: tuple[int, int, int, int]) -> bool:
     try:
         if set_attribute(wintypes.HWND(hwnd), ctypes.byref(data)):
             return True
-        # Some builds refuse acrylic on a tool window but allow plain blur.
+        # Some builds refuse acrylic on a tool window but allow plain blur
         policy.AccentState = _ACCENT_ENABLE_BLURBEHIND
         return bool(set_attribute(wintypes.HWND(hwnd), ctypes.byref(data)))
     except Exception:
@@ -105,12 +105,12 @@ def round_window(hwnd: int, width: int, height: int, radius: int) -> bool:
     try:
         gdi = ctypes.windll.gdi32
         user32 = ctypes.windll.user32
-        # CreateRoundRectRgn takes ellipse *diameters*, not radii.
+        # CreateRoundRectRgn takes ellipse *diameters*, not radii
         region = gdi.CreateRoundRectRgn(0, 0, width + 1, height + 1,
                                         radius * 2, radius * 2)
         if not region:
             return False
-        # The window owns the region after this call; do not delete it.
+        # The window owns the region after this call; do not delete it
         return bool(user32.SetWindowRgn(wintypes.HWND(hwnd), region, True))
     except Exception:
         log.debug("could not set window region", exc_info=True)
@@ -131,7 +131,7 @@ def apply(hwnd: int, *, acrylic: bool = False,
         ))
         return "acrylic"
 
-    # Painted mode: DWM must not draw anything at all.
+    # Painted mode: DWM must not draw anything at all
     _apply_dwm(hwnd, (
         (_DWMWA_USE_IMMERSIVE_DARK_MODE, 1),
         (_DWMWA_WINDOW_CORNER_PREFERENCE, _CORNER_DONOTROUND),

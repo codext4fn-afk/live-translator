@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-# Low alphas on purpose: the acrylic backdrop supplies the depth, so these only tint.
+# Low alphas on purpose: the acrylic backdrop supplies the depth, so these only tint
 GLASS_BASE = "rgba(28, 28, 34, 0.55)"      # window fill over the blur
 GLASS_PANEL = "rgba(255, 255, 255, 0.055)"  # cards
 GLASS_PANEL_HI = "rgba(255, 255, 255, 0.085)"
@@ -12,7 +12,7 @@ GLASS_CONTROL = "rgba(255, 255, 255, 0.085)"
 GLASS_CONTROL_HI = "rgba(255, 255, 255, 0.145)"
 GLASS_SUNKEN = "rgba(0, 0, 0, 0.22)"        # inputs read as recessed
 
-# Hairlines.
+# Hairlines
 EDGE = "rgba(255, 255, 255, 0.12)"
 EDGE_HI = "rgba(255, 255, 255, 0.22)"
 EDGE_SOFT = "rgba(255, 255, 255, 0.07)"
@@ -21,7 +21,6 @@ LABEL = "#FFFFFF"
 LABEL_2 = "rgba(235, 235, 245, 0.68)"
 LABEL_3 = "rgba(235, 235, 245, 0.42)"
 
-# The interface is deliberately neutral; these are the only accents in use.
 BLUE = "#0A84FF"
 BLUE_HI = "#4DA6FF"
 GREEN = "#30D158"
@@ -37,7 +36,7 @@ def tint(hex_colour: str, alpha: float) -> str:
     return f"rgba({r}, {g}, {b}, {alpha})"
 
 
-# Three stops read top-left to bottom-right.
+# Three stops read top-left to bottom-right
 GRADIENTS: dict[str, tuple[str, str, str]] = {
     "graphite": ("rgba(44, 44, 54, 0.90)", "rgba(30, 30, 38, 0.90)",
                  "rgba(22, 22, 28, 0.92)"),
@@ -59,7 +58,7 @@ GRADIENTS: dict[str, tuple[str, str, str]] = {
 
 DEFAULT_GRADIENT = "graphite"
 
-# Human-readable order for the settings panel.
+# Human-readable order for the settings panel
 GRADIENT_ORDER = ("graphite", "slate", "ink", "ash", "midnight", "plum", "forest",
                   "ember")
 
@@ -68,18 +67,17 @@ def gradient_stops(name: str) -> tuple[str, str, str]:
     return GRADIENTS.get(name, GRADIENTS[DEFAULT_GRADIENT])
 
 
-# Generous radii throughout: the reference language rounds far more than a typical desktop.
 R_WINDOW = 28
 R_CARD = 24
 R_CONTROL = 18
 R_PILL = 22
 
-# Inter ships in assets/fonts and loads at startup, so this resolves everywhere.
+# Inter ships in assets/fonts and loads at startup, so this resolves everywhere
 FONT_STACK = (
     '"Inter Variable Text", "Inter Variable", "Inter", '
     '"Segoe UI Variable Text", "Segoe UI", sans-serif'
 )
-# Windows 11's icon font.
+# Windows 11's icon font
 ICON_FONT = '"Segoe Fluent Icons", "Segoe MDL2 Assets"'
 
 
@@ -88,7 +86,7 @@ class Icon:
 
     PAUSE = ""
     PLAY = ""
-    # Delete (a bin) rather than Clear, whose glyph is an X in a box.
+    # Delete (a bin) rather than Clear, whose glyph is an X in a box
     CLEAR = ""
     OPACITY_UP = ""     # Brightness
     OPACITY_DOWN = ""   # QuietHours
@@ -120,12 +118,9 @@ def stylesheet(font_size: int, font_family: str = "",
         outline: none;
     }}
 
-    /* ------------------------------------------------------------ window shell */
-    /* The window's glass is painted here rather than by the compositor, so the corners
-       outside this radius stay fully transparent. A vertical gradient plus the sheen
-       strip below does the work that a real blur would otherwise do. */
-    /* No border: an outline traced the rounded edge and read as a grey ring around
-       the window. The gradient's own top stop gives it enough definition. */
+    /* window shell */
+    /* Qt paints the glass, so the corners outside this radius stay transparent */
+    /* No border: an outline traced the rounded edge and read as a grey ring */
     #root {{
         background: qlineargradient(x1:0, y1:0, x2:0.35, y2:1,
             stop:0 {g0},
@@ -134,7 +129,7 @@ def stylesheet(font_size: int, font_family: str = "",
         border-radius: {R_WINDOW}px;
         border: none;
     }}
-    /* Thin bright line just inside the top edge: the sheen on a pane of glass. */
+    /* The sheen on a pane of glass */
     #sheen {{
         background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
             stop:0 rgba(255,255,255,0.20), stop:1 rgba(255,255,255,0.0));
@@ -142,8 +137,7 @@ def stylesheet(font_size: int, font_family: str = "",
         border-top-right-radius: {R_WINDOW}px;
     }}
 
-    /* The bar lights up while the window is being carried, so it is obvious the drag
-       has taken hold - the `dragging` property is toggled from the drag handlers. */
+    /* The bar lights up while the window is carried, so the drag is obvious */
     #titleBar {{
         background: transparent;
         border-radius: {R_CONTROL}px;
@@ -155,9 +149,8 @@ def stylesheet(font_size: int, font_family: str = "",
     #title {{ font-size: {fs}pt; font-weight: 600; color: {LABEL}; }}
     #subtitle {{ font-size: {fs - 3}pt; color: {LABEL_3}; }}
 
-    /* --------------------------------------------------------- chrome buttons */
-    /* Rounded squares, not circles - square footprint with a soft radius, which is
-       what the reference control-centre tiles use. */
+    /* chrome buttons */
+    /* Rounded squares, not circles */
     #chrome {{
         font-family: {ICON_FONT};
         font-size: {fs}pt;
@@ -176,9 +169,8 @@ def stylesheet(font_size: int, font_family: str = "",
     }}
     #chrome:pressed {{ background-color: {tint(BLUE, 0.55)}; color: white; }}
 
-    /* The close button carries its own objectName, which REPLACES #chrome rather than
-       adding to it - so it has to restate the whole base or it renders as a bare glyph
-       with no rounded square behind it. */
+    /* This objectName REPLACES #chrome, so the base has to be restated or the
+       button renders as a bare glyph */
     #chromeClose {{
         font-family: {ICON_FONT};
         font-size: {fs}pt;
@@ -206,9 +198,8 @@ def stylesheet(font_size: int, font_family: str = "",
         color: #1C1C1E;
     }}
 
-    /* ------------------------------------------------------------------ cards */
-    /* Cards are their own pane of glass: a vertical wash brightest at the top, so
-       each one catches light rather than sitting flat on the window. */
+    /* cards */
+    /* Each card is its own pane of glass, brightest at the top */
     #card {{
         background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
             stop:0 rgba(255,255,255,0.105),
@@ -225,8 +216,7 @@ def stylesheet(font_size: int, font_family: str = "",
         border: 1px solid {EDGE_HI};
     }}
 
-    /* Neutral label, no chip and no colour. Language is identified by its name right
-       beside it, so tinting the code as well was decoration rather than information. */
+    /* Neutral, no chip: the language name is right beside it */
     #langBadge {{
         background: transparent;
         border: none;
@@ -244,7 +234,7 @@ def stylesheet(font_size: int, font_family: str = "",
     #pending {{ color: {LABEL_3}; font-size: {fs}pt; }}
     #errorText {{ color: {RED}; font-size: {fs}pt; }}
 
-    /* ---------------------------------------------------------------- replies */
+    /* replies */
     #replyRow {{
         background-color: {GLASS_CONTROL};
         border-radius: {R_CONTROL}px;
@@ -261,20 +251,18 @@ def stylesheet(font_size: int, font_family: str = "",
         min-width: 15px;
     }}
     #replyText {{ color: {LABEL}; font-size: {fs + 1}pt; font-weight: 600; }}
-    /* Pronunciation sits between the two: more prominent than the gloss because it is
-       what you actually read aloud, quieter than the text it describes. */
+    /* Louder than the gloss, quieter than the text it describes */
     #replySay {{ color: {LABEL_2}; font-size: {fs - 1}pt; font-style: italic; }}
     #replyGloss {{ color: {LABEL_3}; font-size: {fs - 1}pt; }}
     #copyIcon {{ font-family: {ICON_FONT}; font-size: {fs - 1}pt; color: {LABEL_3}; }}
 
-    /* ---------------------------------------------------------------- compose */
+    /* compose */
     #composeBar {{
         background-color: {GLASS_PANEL};
         border-radius: {R_CARD}px;
         border: 1px solid {EDGE_SOFT};
     }}
-    /* The compose row is three true pills: radius is half the control height, so the
-       ends are semicircles rather than rounded corners. */
+    /* True pills: the radius is half the control height */
     #composeInput {{
         background-color: {GLASS_SUNKEN};
         border: 1px solid {EDGE_SOFT};
@@ -297,7 +285,7 @@ def stylesheet(font_size: int, font_family: str = "",
         color: {LABEL_2};
         font-size: {fs - 1}pt;
         font-weight: 600;
-        /* Wide enough for "Auto · Portuguese" without eliding. */
+        /* Wide enough for "Auto · Portuguese" without eliding */
         min-width: 150px;
     }}
     #langPicker:hover {{ background-color: {GLASS_CONTROL_HI}; color: {LABEL}; }}
@@ -311,7 +299,7 @@ def stylesheet(font_size: int, font_family: str = "",
         selection-background-color: {BLUE};
         color: {LABEL};
     }}
-    /* A true circle: radius is exactly half of a square 40px button. */
+    /* A true circle: half of a square 40px button */
     #sendButton {{
         font-family: {ICON_FONT};
         background-color: {BLUE};
@@ -326,8 +314,7 @@ def stylesheet(font_size: int, font_family: str = "",
     #sendButton:pressed {{ background-color: #0060DF; }}
     #sendButton:disabled {{ background-color: {GLASS_CONTROL}; color: {LABEL_3}; }}
 
-    /* No green wash and no coloured outlines: the colour belongs on the text itself.
-       The panel is the same neutral glass as everything else. */
+    /* Neutral glass, the colour belongs on the text */
     #outgoingPanel {{
         background-color: {GLASS_CONTROL};
         border: 1px solid {EDGE_SOFT};
@@ -355,13 +342,13 @@ def stylesheet(font_size: int, font_family: str = "",
         color: {LABEL_3};
         padding: 0px;
     }}
-    /* Neutral, not red. This dismisses a result; it does not destroy anything. */
+    /* Neutral, not red: this dismisses a result */
     #dismiss:hover {{
         background-color: rgba(255, 255, 255, 0.16);
         color: {LABEL};
     }}
 
-    /* --------------------------------------------------------------- settings */
+    /* settings */
     #settingsPanel {{
         background-color: rgba(30, 30, 38, 0.97);
         border: 1px solid {EDGE_HI};
@@ -385,9 +372,9 @@ def stylesheet(font_size: int, font_family: str = "",
         border: 2px solid {BLUE};
     }}
 
-    /* ----------------------------------------------------------------- status */
+    /* status */
     #statusIcon {{ font-family: {ICON_FONT}; font-size: {fs + 1}pt; }}
-    /* Plain grey text in the title bar. No pill, no outline, no colour. */
+    /* Plain grey text, no pill and no outline */
     #toast {{
         color: {LABEL_2};
         font-size: {fs - 1}pt;
@@ -399,7 +386,7 @@ def stylesheet(font_size: int, font_family: str = "",
     #empty {{ color: {LABEL_3}; font-size: {fs + 1}pt; }}
     #emptyIcon {{ font-family: {ICON_FONT}; font-size: {fs + 20}pt; color: {LABEL_3}; }}
 
-    /* -------------------------------------------------------------- scrollbar */
+    /* scrollbar */
     QScrollArea {{ background: transparent; border: none; }}
     QScrollArea > QWidget > QWidget {{ background: transparent; }}
     QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px 1px; }}

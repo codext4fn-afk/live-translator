@@ -7,7 +7,7 @@ from .config import Config
 from .overlay import Overlay, timestamp
 from .suggest import Reply
 
-# Deliberately spans Latin, CJK and RTL scripts.
+# Deliberately spans Latin, CJK and RTL scripts
 SAMPLES = [
     (
         "es", 0.98,

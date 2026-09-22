@@ -1,6 +1,6 @@
 @echo off
-REM Double-click launcher. Starts the overlay with no console window and returns
-REM immediately, so nothing is left sitting in the background.
+REM Double-click launcher: starts the overlay with no console window and returns
+REM immediately, so nothing is left sitting in the background
 setlocal
 set "HERE=%~dp0"
 set "PYTHONPATH=%HERE%src"

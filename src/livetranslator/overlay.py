@@ -92,7 +92,6 @@ class Card(QFrame):
         badge_text = (language or "??").upper()
         if confidence:
             badge_text += f"  {confidence:.0%}"
-        # No inline style: the badge takes its neutral colour from the stylesheet.
         header.addWidget(_label(badge_text, "langBadge", wrap=False))
         header.addWidget(_label(language_name(language), "langName", wrap=False))
         header.addStretch(1)
@@ -156,7 +155,6 @@ class Card(QFrame):
         top.addWidget(_label(Icon.COPY, "copyIcon", wrap=False), 0, Qt.AlignTop)
         layout.addLayout(top)
 
-        # How to say it, for scripts you cannot sound out.
         if reply.say:
             pronunciation = _label(reply.say, "replySay")
             pronunciation.setContentsMargins(24, 0, 0, 0)
@@ -213,14 +211,12 @@ class ComposeBar(QFrame):
         outer.setContentsMargins(10, 10, 10, 10)
         outer.setSpacing(8)
 
-        # Result panel, hidden until there is something to show.
         self._panel = QFrame()
         self._panel.setObjectName("outgoingPanel")
         panel_layout = QVBoxLayout(self._panel)
         panel_layout.setContentsMargins(11, 9, 11, 10)
         panel_layout.setSpacing(4)
 
-        # Header: what was asked, plus a way to dismiss the answer.
         head = QHBoxLayout()
         head.setSpacing(6)
         self._echo = _label("", "outgoingEcho")
@@ -231,7 +227,6 @@ class ComposeBar(QFrame):
         self._dismiss.clicked.connect(self.dismiss)
         head.addWidget(self._dismiss, 0, Qt.AlignTop)
 
-        # One row: this box translates exactly what was typed.
         self._primary_row, self._primary, self._primary_say = self._copy_row(
             "outgoingPrimary")
         self._note = _label("", "outgoingNote")
@@ -242,7 +237,6 @@ class ComposeBar(QFrame):
         self._panel.hide()
         outer.addWidget(self._panel)
 
-        # Input row.
         row = QHBoxLayout()
         row.setSpacing(8)
 
@@ -303,7 +297,7 @@ class ComposeBar(QFrame):
 
         layout.addWidget(_label(Icon.COPY, "copyIcon", wrap=False), 0, Qt.AlignTop)
         row.setToolTip("Click to copy")
-        # Copies the text itself, never the romanisation.
+        # Copies the text itself, never the romanisation
         row.clicked.connect(lambda: self._overlay.copy_to_clipboard(label.text()))
         return row, label, say
 
@@ -367,7 +361,6 @@ class ComposeBar(QFrame):
         else:
             self._note.hide()
         self._open_panel(animate=True)
-        # The answer replaces "translating…" in place.
         motion.fade_in(self._primary_row, duration=220)
 
     def show_error(self, message: str) -> None:
@@ -397,7 +390,7 @@ class Overlay(QWidget):
         gradient: str = theme.DEFAULT_GRADIENT,
     ) -> None:
         self._app = QApplication.instance() or QApplication([])
-        # Must happen before the stylesheet is applied, or the families are unknown.
+        # Must happen before the stylesheet is applied, or the families are unknown
         theme.load_bundled_fonts()
         super().__init__()
 
@@ -431,7 +424,7 @@ class Overlay(QWidget):
             flags |= Qt.WindowStaysOnTopHint
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        # Appearing must not pull the user out of their game or call.
+        # Appearing must not pull the user out of their game or call
         self.setAttribute(Qt.WA_ShowWithoutActivating, True)
         self.setWindowTitle("live-translator")
         self.setWindowOpacity(opacity)
@@ -470,7 +463,6 @@ class Overlay(QWidget):
         self.compose = ComposeBar(self, my_language)
         layout.addWidget(self.compose)
 
-        # Resize handle only - the old status line has been removed.
         grip_row = QHBoxLayout()
         grip_row.setContentsMargins(0, 0, 0, 0)
         grip_row.setSpacing(0)
@@ -479,22 +471,20 @@ class Overlay(QWidget):
         self._grip.setFixedSize(13, 13)
         grip_row.addWidget(self._grip, 0, Qt.AlignBottom)
         layout.addLayout(grip_row)
-        # The grip is decoration, not a row of content; do not let it claim space.
+        # The grip is decoration, not a row of content; do not let it claim space
         layout.setStretch(layout.count() - 1, 0)
 
-        # Specular highlight along the very top of the glass.
         self._sheen = QFrame(self._root)
         self._sheen.setObjectName("sheen")
         self._sheen.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self._sheen.lower()
 
-        # Floats over the feed rather than displacing it.
         self._settings = SettingsPanel(self._root, current=self._gradient,
                                        sounds=self.cues, my_language=my_language)
         self._settings.chosen.connect(self._apply_gradient)
         self._settings.language_chosen.connect(self._apply_language)
 
-        # Created last and raised, so the drag splash draws over the content instead of.
+        # raised last so the splash draws over the content
         self._splash = SplashSurface(theme.R_WINDOW, self._root,
                                      colour=QColor(theme.BLUE))
         self._splash.raise_()
@@ -516,7 +506,6 @@ class Overlay(QWidget):
         layout.addWidget(self._titleLabel)
         layout.addSpacing(8)
 
-        # The toast lives here now that the status bar is gone.
         self._toast = _label("", "toast", wrap=False)
         self._toast.hide()
         layout.addWidget(self._toast)
@@ -538,7 +527,7 @@ class Overlay(QWidget):
         close.setObjectName("chromeClose")
         layout.addWidget(close)
 
-        # Dragging is handled at window level, so the bar needs no handlers of its own.
+        # Dragging is handled at window level, so the bar needs no handlers of its own
         self._titleBar = bar
         return bar
 
@@ -612,7 +601,7 @@ class Overlay(QWidget):
                                theme.R_WINDOW)
 
 
-    # Anything the user can operate; a press on one of these is not a drag.
+    # Anything the user can operate; a press on one of these is not a drag
     _INTERACTIVE = (QPushButton, QLineEdit, QComboBox, QScrollBar, QSizeGrip,
                     PressableFrame)
 
@@ -636,7 +625,6 @@ class Overlay(QWidget):
         )
         self._dragging = True
         self.sounds.play("grab")
-        # Pixel splash from the grab point.
         local = self._root.mapFrom(self, event.position().toPoint())
         self._splash.splash_press(local, peak=0.55)
         motion.animate_opacity(self, max(0.55, self._opacity - 0.06), duration=180)
@@ -656,16 +644,11 @@ class Overlay(QWidget):
             motion.animate_opacity(self, self._opacity, duration=260)
         super().mouseReleaseEvent(event)
 
-    # No mouseDoubleClickEvent.
-
-
     def nudge_opacity(self, delta: float) -> None:
-        # No readout: the change is visible on the window itself.
         self._opacity = min(1.0, max(0.30, self._opacity + delta))
         self.setWindowOpacity(self._opacity)
 
     def toggle_pause(self) -> None:
-        # No toast either - the button changes to a play glyph and turns amber.
         self._paused = not self._paused
         self._pause_btn.setText(Icon.PLAY if self._paused else Icon.PAUSE)
         self._pause_btn.setObjectName("chromeActive" if self._paused else "chrome")
@@ -806,7 +789,6 @@ class Overlay(QWidget):
         else:
             colour = theme.GREEN if active else theme.LABEL_3
         self._dot.setStyleSheet(f"color: {colour};")
-        # Breathing while speech is actually being captured, still otherwise.
         if active and not self._paused:
             self._pulse.start()
         else:
@@ -824,7 +806,7 @@ class Overlay(QWidget):
         self._empty.hide()
         card = Card(self, original=original, language=language,
                     confidence=confidence, meta=meta)
-        # Newest first, so the latest line is always visible without scrolling.
+        # Newest first, so the latest line is always visible without scrolling
         self._feed.insertWidget(0, card)
         self._cards.insert(0, card)
 
@@ -834,7 +816,7 @@ class Overlay(QWidget):
             stale.deleteLater()
 
         self.sounds.play("card")
-        # Height is only known after a layout pass, so animate on the next tick.
+        # Height is only known after a layout pass, so animate on the next tick
         QTimer.singleShot(0, lambda: motion.reveal(card))
         QTimer.singleShot(0, lambda: self._scroll.verticalScrollBar().setValue(0))
         return card

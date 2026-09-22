@@ -88,7 +88,6 @@ class EnergyVad:
             self._floor = level
             return False
         speech = level > self._floor + self._margin
-        # Track quiet frames quickly, loud frames barely.
         alpha = 0.02 if speech else 0.15
         self._floor += alpha * (level - self._floor)
         return speech
@@ -141,7 +140,7 @@ class NoiseGate:
 class Segmenter:
     """Feed it 20 ms frames; it hands back complete utterances."""
 
-    # Fraction of the onset window that must be voiced to start capturing.
+    # Fraction of the onset window that must be voiced to start capturing
     _ONSET_RATIO = 0.6
     _ONSET_WINDOW_FRAMES = 5  # 100 ms
 
@@ -164,7 +163,6 @@ class Segmenter:
         )
 
         self._silence_frames_needed = max(1, silence_ms // FRAME_MS)
-        # Adaptive endpointing.
         self._chunk_after_frames = max(1, chunk_after_ms // FRAME_MS)
         self._chunk_silence_frames = max(1, chunk_silence_ms // FRAME_MS)
         self._min_speech_frames = max(1, min_speech_ms // FRAME_MS)
@@ -185,7 +183,6 @@ class Segmenter:
         self._started_at = 0.0
         self._seq = 0
 
-        # Diagnostics surfaced in the UI status bar.
         self.frames_seen = 0
         self.frames_gated = 0
 
@@ -209,7 +206,7 @@ class Segmenter:
 
     def reset(self) -> None:
         self._active = False
-        # Rebind rather than clear(): _finish holds a reference to this list.
+        # Rebind rather than clear(): _finish holds a reference to this list
         self._collected = []
         self._silence_run = 0
         self._voiced_frames = 0
@@ -221,7 +218,7 @@ class Segmenter:
         self.frames_seen += 1
 
         level = dbfs(frame)
-        # Ask the VAD first, then let the gate veto.
+        # Ask the VAD first, then let the gate veto
         voiced = self._vad.is_speech(frame)
         if not voiced:
             self._gate.observe_ambient(level)
@@ -268,9 +265,9 @@ class Segmenter:
 
     def _begin(self) -> None:
         self._active = True
-        # The pre-roll already contains the onset frames.
+        # The pre-roll already contains the onset frames
         self._collected = list(self._pre_roll)
-        # Carry over only the frames the VAD actually called speech.
+        # Carry over only the frames the VAD actually called speech
         self._voiced_frames = sum(self._onset)
         self._pre_roll.clear()
         self._onset.clear()
@@ -278,18 +275,17 @@ class Segmenter:
         self._started_at = time.monotonic()
 
     def _finish(self, *, timed_out: bool) -> Utterance | None:
-        # Snapshot everything before reset() touches the instance state.
+        # Snapshot everything before reset() touches the instance state
         frames = list(self._collected)
         voiced = self._voiced_frames
         started = self._started_at
-        # Trim the tail that actually triggered the cut.
         silence_tail = self._required_silence()
         self.reset()
 
         if not frames or voiced < self._min_speech_frames:
             return None
 
-        # Drop the trailing silence that triggered the cut.
+        # Drop the trailing silence that triggered the cut
         if not timed_out and silence_tail < len(frames):
             keep = len(frames) - max(0, silence_tail - 2)
             frames = frames[:keep]

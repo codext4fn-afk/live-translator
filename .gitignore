@@ -1,14 +1,11 @@
-# ---------------------------------------------------------------- private data
-# Logs contain transcripts of real conversations captured from your speakers.
-# Never publish them.
+# transcripts of real conversations captured from your speakers, never publish these
 logs/
 *.log
 *.wav
 
-# Generated at first run from sounds.py - no need to ship binaries.
+# generated at first run by sounds.py
 sounds/
 
-# ------------------------------------------------------------------ environment
 .venv/
 venv/
 env/
@@ -19,17 +16,14 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 
-# Model caches, if anyone points HF_HOME here.
+# model caches, if anyone points HF_HOME here
 .cache/
 models/
 
-# Development probes and benchmarks. Useful while working on the code, not needed
-# to install or run it, so they stay out of the published repository.
+# probes and benchmarks, not needed to install or run anything
 tests/
 
-# ------------------------------------------------------------------------ local
-# Personal settings: language choices, device name, window position. Everyone's
-# copy differs, and config.example.toml is the one that ships.
+# personal settings: language, device, window position. config.example.toml ships instead
 config.toml
 
 .vscode/

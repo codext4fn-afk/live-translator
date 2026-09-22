@@ -4,68 +4,59 @@
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)
 
-Translates what other people say in Discord or game voice chat, live, in a small window
-that sits on top of your game.
+Translates voice chat while you play, in a small window that sits on top of the game. It reads
+what comes out of your speakers, so it hears the people in your Discord call or game lobby and
+not you.
 
-It records your speakers, not your microphone, so it hears the other people in the call.
-When someone speaks a language you don't know, you get their words, the translation, and
-a few replies you can send back in their language. You can also type in English and get
-it translated
+Each line gives you the language, what they said, the translation, and three replies you can
+send back in their language. The box at the bottom does the other direction: type English, get
+it in theirs.
 
-Unoptimized for low end PCs, check **requirements**
+It needs an NVIDIA card to keep up properly. AMD and Intel work, slower, see
+[AMD and Intel graphics](#amd-and-intel-graphics).
 
 ![The overlay](docs/overlay.png)
 
-## How to start it
+## Start it
 
-Double-click **`live-translator.bat`**.
+Double-click `live-translator.bat`. Right-click that file, then Send to, then Desktop, if you
+want a shortcut somewhere easier to reach.
 
-That opens the overlay. Right-click that file and pick Send to, then Desktop, if you
-want a shortcut you can launch from anywhere.
-
-If you prefer PowerShell:
+From PowerShell:
 
 ```powershell
 cd C:\path\to\live-translator
 .\run.ps1
 ```
 
-Close it with the X in the corner.
+The X in the corner closes it.
 
-## Installing it
+## Install
 
-You need Windows 10 or 11 and about 8 GB of disk for the models.
-
-An NVIDIA GPU with 6 GB of memory gives the best results. AMD and Intel graphics work
-too, just on the CPU, because the speech library only accelerates on CUDA. It picks a
-smaller model in that case so it can still keep up. Check this
-[AMD and Intel graphics](#amd-and-intel-graphics).
-
-Install Python and Ollama:
+Windows 10 or 11, and 8 GB of disk free for the models.
 
 ```powershell
 winget install --id Python.Python.3.11 --scope user
 winget install --id Ollama.Ollama
 ```
 
-Close PowerShell and open it again so it finds the new commands. Then:
+Close PowerShell and open it again so the new commands are on your PATH, then:
 
 ```powershell
-git clone https://github.com/codext4fn-afk/live-translator.git
-cd live-translator
+git clone https://github.com/codext4fn-afk/live-translator-2.git
+cd live-translator-2
 .\setup.ps1
 ```
 
-`setup.ps1` does the rest: virtual environment, Python packages, language model, config
-file. Then it checks everything and tells you if something is missing. Takes about ten
-minutes, mostly downloading.
+`setup.ps1` builds the virtual environment, installs the packages, pulls the language model and
+writes a config file. Around ten minutes, nearly all of it downloading. It checks the result at
+the end and names anything that is missing.
 
-Now start it with `live-translator.bat`. The first launch downloads the speech model,
-about 1.6 GB. After that it opens in under a second
+The first launch downloads the speech model, 1.6 GB. Launches after that take about a second.
 
-If setup goes wrong, run `.\run.ps1 --check`. It tests each piece and says what failed.
+If something went wrong, `.\run.ps1 --check` tests each part and says which one failed.
 
-## Updating an existing install
+## Updating
 
 ```powershell
 cd C:\path\to\live-translator
@@ -73,58 +64,91 @@ git pull
 .\setup.ps1
 ```
 
-`setup.ps1` is safe to run again. It keeps your settings and only changes what must
-change.
+Running `setup.ps1` again is safe. Your settings survive it.
 
-If you installed before hardware detection existed, your `config.toml` still says
-`device = "cuda"`. On an AMD or Intel machine that means the speech model runs on the
-CPU at a size meant for a GPU, which is the slow install everyone hit. Running
-`setup.ps1` rewrites those keys to `auto` and saves your old file as
-`config.toml.backup`.
+Installs from before hardware detection have `device = "cuda"` in `config.toml`. On an AMD or
+Intel machine that puts a GPU-sized model on the CPU, which is the install everyone thought was
+broken. `setup.ps1` rewrites those keys to `auto` and keeps your old file as
+`config.toml.backup`. Check with `.\run.ps1 --check`: the `speech backend` line says what you
+actually ended up with.
 
-Check what you ended up with:
+## Using it
 
-```powershell
-.\run.ps1 --check
+Click a reply to copy it, then paste it into your chat. Under each reply is a pronunciation line
+written in English letters, so Japanese or Arabic is still readable out loud.
+
+Drag the window from anywhere that is not a button. The corner resizes it. Buttons across the
+top are pause, settings, clear, dimmer, brighter, close. Settings holds the window colour and
+the language you want everything translated into.
+
+## Settings
+
+Everything lives in `config.toml` and every key has a comment next to it. The ones people
+change:
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `languages.my_language` | English | What you want things translated into |
+| `languages.ignore_languages` | `["en"]` | Languages skipped completely |
+| `languages.allowed` | 13 languages | Languages it will try to detect. Cut this to the ones you hear |
+| `audio.silence_ms` | 700 | How long a pause has to be to end a sentence |
+| `suggest.count` | 3 | How many replies to write. Two is faster |
+| `suggest.model` | `qwen3:4b` | Any model you have in Ollama |
+| `ui.font_size` | 13 | Text size, everything scales with it |
+
+### English does not show up
+
+That is deliberate. You already speak it, so English is thrown out before anything else runs,
+which is also where most of the speed comes from. Take `"en"` out of `ignore_languages` if you
+want English lines with replies. Changing your language in Settings edits that list for you.
+
+### Hearing only the voice chat
+
+It captures whatever your speakers are playing, music and game audio included. Send the voice
+chat somewhere separate to fix that:
+
+1. Settings, then System, then Sound, then Volume mixer.
+2. Set Discord's output device to something other than your speakers. VB-Audio Virtual Cable is
+   free and works well here.
+3. Name that device in `config.toml`:
+
+```toml
+[audio]
+device = "CABLE"
 ```
 
-The `speech backend` line names the model and device actually in use.
+`.\run.ps1 --list-devices` prints the names you can use.
 
 ## AMD and Intel graphics
 
-The speech library only accelerates on CUDA, so AMD and Intel GPUs cannot run it and
-the work falls to your CPU.
+faster-whisper is built on CTranslate2, which only accelerates on CUDA. Without an NVIDIA card
+transcription runs on your CPU.
 
-That matters more than it sounds. Measured on a six core CPU with a 5.7 second clip:
+Six core CPU, 5.7 second clip:
 
-| Model | Time to transcribe | Speed |
+| Model | Time | Speed |
 | --- | --- | --- |
 | large-v3-turbo | 13.3 s | 2.3x slower than real time |
 | small | 3.3 s | 0.58x, keeps up |
-| base | 1.2 s | 0.21x, very quick |
+| base | 1.2 s | 0.21x |
 | tiny | 0.5 s | 0.08x, least accurate |
 
-A GPU-sized model on a CPU takes longer to transcribe a sentence than the sentence took
-to say, so you fall further behind the longer someone talks. That is why installs on AMD
-machines felt like they were doing nothing.
+Anything slower than real time falls further behind the longer someone talks, which is why
+large-v3-turbo on a CPU looks like it has hung. It picks `small` now when there is no CUDA
+device.
 
-It now picks `small` automatically when there is no CUDA device, the smallest model that
-still handles languages other than English well.
-
-**The biggest thing you can do is narrow the language list.** Working out which of
-thirteen languages someone is speaking costs a whole extra pass over the audio. Tell it
-the one language you actually hear and that pass disappears:
+Cutting the language list down makes a bigger difference than anything else you can change.
+Working out which of thirteen languages someone is speaking costs a whole extra pass over the
+audio:
 
 ```toml
 [languages]
 allowed = ["fr"]
 ```
 
-Measured on the same clip: 3.14 s with thirteen languages, 1.97 s with one. Same text,
-37% less work. Keep your own language out of the list if you have it in
-`ignore_languages`, or leave both in and it still works.
+Same clip, 3.14 s with thirteen languages, 1.97 s with one.
 
-If it is still too slow, drop to a smaller model:
+If that is still not enough, use a smaller model:
 
 ```toml
 [asr]
@@ -133,81 +157,19 @@ model = "base"
 
 ### Why not the GPU
 
-You will see ROCm, DirectML and Vulkan suggested for this. None of them work here, and
-they were each tried:
+ROCm, DirectML and Vulkan all come up for this. None of them work:
 
-- **ROCm** is what AMD uses for compute, but the speech library is built on CTranslate2,
-  which only targets CUDA. There is no ROCm build of it, and AMD's ROCm for Windows
-  covers few cards anyway.
-- **DirectML** runs on any Direct3D 12 GPU and does load Whisper. The output is wrong.
-  A test clip came back as "Hello detrimental detrimental detrimental" where the CPU
-  gave "Hello there! Can you hear me clearly on this". It was also slower.
-- **Vulkan** works in whisper.cpp, but the project ships no Vulkan build for Windows
-  x64, only CPU, BLAS and CUDA. Using it would mean asking you to compile it yourself.
+- ROCm: CTranslate2 has no ROCm build, and AMD's ROCm for Windows covers very few cards anyway.
+- DirectML: it loads Whisper and then transcribes wrong. A clip the CPU read as "Hello there!
+  Can you hear me clearly on this" came back as "Hello detrimental detrimental detrimental". It
+  was slower too.
+- Vulkan: works in whisper.cpp, but the project ships no Vulkan build for Windows x64, only CPU,
+  BLAS and CUDA. Using it would mean compiling it yourself.
 
-Replies are different. Those come from Ollama, which does support AMD through ROCm, so
+Replies are a different story. Those come from Ollama, which does support AMD through ROCm, so
 if your card is on
-[Ollama's supported list](https://github.com/ollama/ollama/blob/main/docs/gpu.md) that
-half already runs on your GPU.
-
-## Using it
-
-Each card shows the language, what they said, the translation in bold, then numbered
-replies you can send. Click a reply to copy it, then paste it in your chat.
-
-For languages that don't use our alphabet there is a pronunciation line under each
-reply, so you can read Japanese or Arabic out loud.
-
-The bar at the bottom goes the other way. Type in English, press Enter and you get it
-in their language.
-
-Drag the window from anywhere that isn't a button. The corner resizes it. The buttons
-along the top are pause, settings, clear, dim, brighten, close.
-
-Settings changes the window colour and the language you want everything translated into.
-
-## Settings
-
-Everything is in `config.toml`, and every setting has a comment explaining it. The ones
-you might want to change:
-
-| Setting | Default | What it does |
-| --- | --- | --- |
-| `languages.my_language` | English | The language you want things translated into. |
-| `languages.ignore_languages` | `["en"]` | Languages to skip completely. English is skipped because you already speak it. |
-| `languages.allowed` | 13 languages | Which languages it will try to detect. Cut this down to the ones you actually hear. |
-| `audio.silence_ms` | 700 | How long someone has to stop talking before it counts as the end of a sentence. |
-| `suggest.count` | 3 | How many replies to write. Two is faster. |
-| `suggest.model` | `qwen3:4b` | Any model you have in Ollama. |
-| `ui.font_size` | 13 | Text size. Everything scales with it. |
-
-### English doesn't show up
-
-That's on purpose. You already speak it, so it gets dropped before anything else
-happens. It also makes everything faster, because in a mostly English call there is
-almost nothing left to do.
-
-If you want English lines with replies too, remove `"en"` from `ignore_languages`.
-Changing your language in Settings updates this for you.
-
-### Only hearing the voice chat
-
-By default it hears everything your speakers play, music and game sounds included, and
-tries to translate all of it.
-
-To fix that, send only the voice chat to its own audio device:
-
-1. Settings, then System, then Sound, then Volume mixer.
-2. Find Discord and set its Output device to something other than your speakers. A free
-   virtual audio cable like VB-Audio Virtual Cable works well here.
-3. Put that device in `config.toml`:
-
-```toml
-[audio]
-device = "CABLE"
-```
-
-`.\run.ps1 --list-devices` lists the names you can use.
+[Ollama's list](https://github.com/ollama/ollama/blob/main/docs/gpu.md) that half already runs
+on your GPU.
 
 ## Speed
 
@@ -217,61 +179,54 @@ On an RTX 3070:
 | --- | --- |
 | Window opens | 0.4 s |
 | Ready to listen | 3 to 6 s |
-| Detects end of a sentence | 0.7 s |
-| Transcribes it | 0.5 s |
+| End of a sentence detected | 0.7 s |
+| Transcribed | 0.5 s |
 | Translation appears | 0.4 s later |
 | Replies appear | 1.3 to 2.2 s |
 | Typed translation | 0.4 to 0.9 s |
 
-Transcribing is fast. Writing the replies is the slow part, and it depends on how much
-the model writes, so `suggest.count` changes speed more than anything else.
+Transcribing is quick. Writing the replies is the part you wait for, and it scales with how much
+text the model produces, so `suggest.count` moves the number more than anything else.
 
-Without an NVIDIA GPU it uses `small` on the CPU, where transcribing takes about 0.6
-seconds per second of speech rather than half a second flat. Everything else is the
-same.
+It holds 2 GB for the speech model and 3 GB for the language model, which leaves 3 GB free on an
+8 GB card. Set `asr.compute_type` to `int8` if a game wants that memory back.
 
-It uses about 2 GB for the speech model and 3 GB for the language model. That leaves
-3 GB free on an 8 GB card. If a game needs it back, set `asr.compute_type` to `int8`.
-
-## When something breaks
+## When it breaks
 
 Run `.\run.ps1 --check` first. It tests each part and names the problem.
 
-**Nothing shows up.** Check it is listening to the right device. `--list-devices` shows
-what is available, then put part of the name in `[audio].device`.
+**Nothing appears.** Wrong capture device. Run `--list-devices` and put part of the name in
+`[audio].device`.
 
-**The words are wrong.** Sentences are probably getting cut too short. Open
-`logs\live-translator.log`:
+**The words are wrong.** Sentences are being cut short. Open `logs\live-translator.log`:
 
 ```
 heard 3.8s en(0.74) in 0.55s: 'How much do you like it?'
 filtered (fragment (0.41s of audio)): 'you'
 ```
 
-If those times are around a second, it is chopping people off mid sentence and guessing
-at the rest. Raise `audio.silence_ms`. Cutting `languages.allowed` down to the languages
-you actually hear helps too.
+If those durations are around a second, it is cutting people off mid sentence and guessing the
+rest. Raise `audio.silence_ms`. Shortening `languages.allowed` helps as well.
 
-**It got slow.** The log tells you which problem it is. `suggested in 1.4s` is normal.
-Tens of seconds means a game took the GPU memory, and it says so directly:
-`qwen3:4b is only 40% on the GPU`. Close something or set `asr.compute_type` to `int8`.
-One slow result after a quiet spell is just the model loading back in.
+**It went slow.** The log says which problem it is. `suggested in 1.4s` is normal. Tens of
+seconds means a game took the VRAM, and it prints that directly:
+`qwen3:4b is only 40% on the GPU`. Close something, or switch `asr.compute_type` to `int8`. One
+slow line after a quiet spell is just the model loading back in.
 
-**It translates my music.** See [Only hearing the voice chat](#only-hearing-the-voice-chat).
+**It translates my music.** See [Hearing only the voice chat](#hearing-only-the-voice-chat).
 
-**The window is invisible in a game.** Fullscreen games draw over everything. Set the
-game to Borderless or Windowed.
+**It is invisible over the game.** Fullscreen draws over everything. Set the game to Borderless
+or Windowed.
 
-**It says Ollama is not connected.** Start Ollama from the Start menu, or run
-`ollama serve`.
+**It says Ollama is not connected.** Start Ollama from the Start menu, or run `ollama serve`.
 
 ## Commands
 
 | | |
 | --- | --- |
 | `.\run.ps1` | Start it |
-| `.\run.ps1 --check` | Test everything and show the audio device |
-| `.\run.ps1 --demo` | Show the window with fake content, no audio or models |
+| `.\run.ps1 --check` | Test everything and show the capture device |
+| `.\run.ps1 --demo` | The window with fake content, no audio or models |
 | `.\run.ps1 --list-devices` | List audio devices |
 | `.\run.ps1 --language es` | Skip detection, assume one language |
 | `.\run.ps1 --no-suggest` | Translate only, no replies |
@@ -281,42 +236,26 @@ game to Borderless or Windowed.
 
 ```
 speakers
-  - WASAPI loopback capture, resampled to 16 kHz mono
-  - voice detection with an adaptive noise gate
-  - faster-whisper large-v3-turbo on CUDA
-  - qwen3:4b through Ollama, streamed
-  - overlay
+  WASAPI loopback capture, resampled to 16 kHz mono
+  voice detection with an adaptive noise gate
+  faster-whisper large-v3-turbo on CUDA
+  qwen3:4b through Ollama, streamed
+  overlay
 ```
 
-Things worth knowing if you want to change it:
+Worth knowing if you want to change it:
 
-It waits for a real pause before ending a sentence. Give the speech model a one second
-fragment and it guesses at both the words and the language, which is where wrong
-translations come from. Once someone has been talking a while it starts cutting at
-smaller pauses so you are not waiting for them to finish.
+An utterance ends on a real pause. Hand the speech model a one second fragment and it guesses
+both the words and the language, which is where wrong translations come from. Once someone has
+been talking for a while it starts cutting at smaller pauses instead, so long speech arrives in
+pieces rather than all at the end.
 
-The model reply is read as it arrives. The translation is the first thing it writes, so
-it appears while the replies are still being generated.
+The model's answer is read as it streams in. The translation comes first in the schema, so it
+shows up while the replies are still being written.
 
-Transcripts get filtered before you see them. Speech models make things up when they
-hear music or silence, usually subtitle junk like "Thanks for watching". Results are
-scored on confidence, length, repetition and language, and anything that looks invented
-is thrown away. Every rejection is in the log with a reason.
-
-Nothing is saved to disk except the log.
-
-## Models
-
-`suggest.model` takes anything you have in Ollama. `qwen3:4b` is the default.
-`gemma3:4b` is worth a try if you prefer how it translates.
-
-```powershell
-.\run.ps1 --suggest-model gemma3:4b
-```
-
-A 4B model is good but not perfect. Expect the odd grammar mistake in a reply, so read
-the English underneath before you send it. Pronunciation lines are close enough to be
-understood, not exact. `qwen3:8b` is better at both if you have the memory.
+Speech models invent text when they hear music or silence, usually subtitle filler along the
+lines of "Thanks for watching". Results are scored on confidence, length, repetition and
+language, and anything that looks made up is dropped with a reason in the log.
 
 ## Files
 
@@ -333,26 +272,38 @@ src/livetranslator/
   pipeline.py  threading
 ```
 
+## Models
+
+`suggest.model` takes anything you have in Ollama. `gemma3:4b` is worth a try if you prefer how
+it translates.
+
+```powershell
+.\run.ps1 --suggest-model gemma3:4b
+```
+
+A 4B model gets grammar wrong now and then, so read the English under a reply before you send
+it. Pronunciation lines are close enough to be understood, not exact. `qwen3:8b` is better at
+both and wants more memory.
 
 ## Fonts
 
-Inter ships in `assets/fonts` and loads at startup, so the window looks the same on
-every machine with nothing to install. It is under the SIL Open Font License, which
-allows it to be included and passed on.
-
-Set `ui.font_family` in `config.toml` to use a different font you have installed.
+Inter is in `assets/fonts` and loads at startup, so there is nothing to install and the window
+looks the same everywhere. It is under the SIL Open Font License, which allows it to be included
+and passed on. Set `ui.font_family` in `config.toml` for a different font.
 
 ## Privacy
 
-Audio is handled in memory and never saved. The only file it writes is
-`logs\live-translator.log`, which has transcribed text in it for troubleshooting. It is
-not uploaded anywhere and git ignores it. Delete it whenever you like.
+Audio is handled in memory and never written to disk. The only file it writes is
+`logs\live-translator.log`, which has transcribed text in it for troubleshooting, is ignored by
+git, and can be deleted whenever you like.
 
-This records calls you are part of. Recording other people may need their permission
-where you live.
+This records calls you are part of. Recording other people may need their permission where you
+live.
 
-## Note
-If you'd like to talk to me about this repo or have some feedback you can also dm me on discord: doug.l0as. Thanks to RRosemont for testing the software.
+## Contact
+
+Discord: doug.l0as, if you want to talk about the repo or send feedback. Thanks to RRosemont for
+testing.
 
 ## Licence
 
