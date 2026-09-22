@@ -43,8 +43,8 @@ winget install --id Ollama.Ollama
 Close PowerShell and open it again so the new commands are on your PATH, then:
 
 ```powershell
-git clone https://github.com/codext4fn-afk/live-translator-2.git
-cd live-translator-2
+git clone https://github.com/codext4fn-afk/live-translator.git
+cd live-translator
 .\setup.ps1
 ```
 
@@ -65,6 +65,10 @@ git pull
 ```
 
 Running `setup.ps1` again is safe. Your settings survive it.
+
+`config.toml` is part of the repo, so if you edited it and a pull wants to change that same
+file, git stops rather than overwrite you. Run `git stash`, then `git pull`, then
+`git stash pop` to get your values back.
 
 Installs from before hardware detection have `device = "cuda"` in `config.toml`. On an AMD or
 Intel machine that puts a GPU-sized model on the CPU, which is the install everyone thought was
@@ -90,11 +94,22 @@ change:
 | --- | --- | --- |
 | `languages.my_language` | English | What you want things translated into |
 | `languages.ignore_languages` | `["en"]` | Languages skipped completely |
-| `languages.allowed` | 13 languages | Languages it will try to detect. Cut this to the ones you hear |
+| `languages.allowed` | 20 languages | Languages it will try to detect. Cut this to the ones you hear |
 | `audio.silence_ms` | 700 | How long a pause has to be to end a sentence |
 | `suggest.count` | 3 | How many replies to write. Two is faster |
 | `suggest.model` | `qwen3:4b` | Any model you have in Ollama |
 | `ui.font_size` | 13 | Text size, everything scales with it |
+
+### Languages
+
+All 100 languages Whisper knows are available, and they are all in the Settings picker.
+`languages.allowed` starts with 20 of them, including Filipino, Malay, Vietnamese, Thai,
+Korean and Chinese. Add any code you want to that list.
+
+The codes are Whisper's own and some are not what you would guess. Filipino is `tl`, not
+`fl` or `ph`. Malay is `ms`, and `my` is Burmese, not Malaysian. Names work too, so
+`allowed = ["filipino", "malay"]` is fine, and a wrong code gets corrected or dropped with a
+line in the log instead of stopping transcription.
 
 ### English does not show up
 

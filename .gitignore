@@ -23,8 +23,7 @@ models/
 # probes and benchmarks, not needed to install or run anything
 tests/
 
-# personal settings: language, device, window position. config.example.toml ships instead
-config.toml
+config.toml.backup
 
 .vscode/
 .idea/

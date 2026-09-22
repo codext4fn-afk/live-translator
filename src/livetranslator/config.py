@@ -10,6 +10,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, get_type_hints
 
+from . import languages
+
 log = logging.getLogger(__name__)
 
 
@@ -229,9 +231,36 @@ def save_ui_value(path: Path | None, key: str, value: str) -> bool:
     return save_value(path, "ui", key, value)
 
 
+def _clean_codes(values: list[str], where: str, notes: list[str]) -> list[str]:
+    """Drop language codes Whisper cannot use, fixing the ones with a known spelling."""
+    cleaned: list[str] = []
+    for raw in values:
+        code = languages.normalise(raw)
+        if not code:
+            notes.append(f"{where}: {raw!r} is not a language Whisper knows - ignored")
+            continue
+        if code != raw.strip().lower():
+            notes.append(f"{where}: {raw!r} read as {code!r} ({languages.name(code)})")
+        if code not in cleaned:
+            cleaned.append(code)
+    return cleaned
+
+
 def _validate(cfg: Config) -> list[str]:
     """Clamp out-of-range values rather than crashing, and report what changed."""
     notes: list[str] = []
+
+    lang = cfg.languages
+    lang.allowed = _clean_codes(lang.allowed, "languages.allowed", notes)
+    lang.ignore_languages = _clean_codes(
+        lang.ignore_languages, "languages.ignore_languages", notes
+    )
+    lang.skip_translation_for = _clean_codes(
+        lang.skip_translation_for, "languages.skip_translation_for", notes
+    )
+    if lang.source:
+        lang.source = _clean_codes([lang.source], "languages.source", notes)
+        lang.source = lang.source[0] if lang.source else ""
 
     if not 0 <= cfg.audio.vad_aggressiveness <= 3:
         notes.append(

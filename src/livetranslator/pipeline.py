@@ -14,20 +14,13 @@ from .audio import AudioError, LoopbackCapture, pick_device
 from .config import Config
 from .overlay import Card, Overlay, timestamp
 from .sounds import SoundBoard
-from .suggest import _LANGUAGE_NAMES, Outgoing, Suggester
+from .languages import code_for as _language_code
+from .suggest import Outgoing, Suggester
 from .vad import Segmenter, Utterance
 
 log = logging.getLogger(__name__)
 
 _MAX_PENDING_SUGGESTIONS = 3
-
-
-def _language_code(name: str) -> str:
-    """Map a display name back to its ISO code, for the skip-translation list."""
-    for code, label in _LANGUAGE_NAMES.items():
-        if label.casefold() == name.casefold():
-            return code
-    return ""
 
 
 class Pipeline:

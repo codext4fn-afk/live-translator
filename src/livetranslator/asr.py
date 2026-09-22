@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from . import bootstrap
+from . import bootstrap, languages
 from .audio import TARGET_RATE
 
 log = logging.getLogger(__name__)
@@ -146,7 +146,11 @@ class Transcriber:
         min_audio_s: float = 0.55,
         allowed_languages: list[str] | None = None,
     ) -> None:
-        self.allowed_languages = {c.lower() for c in (allowed_languages or []) if c}
+        self.allowed_languages = {
+            code for code in
+            (languages.normalise(c) for c in (allowed_languages or []) if c)
+            if code
+        }
         self.beam_size = beam_size
         self.max_no_speech_prob = max_no_speech_prob
         self.min_avg_logprob = min_avg_logprob
@@ -213,6 +217,14 @@ class Transcriber:
         """Transcribe 16 kHz mono float32 audio and score it for plausibility."""
         started = time.monotonic()
         audio_s = len(samples) / TARGET_RATE
+
+        if language:
+            # An unknown code makes the tokenizer raise on every single utterance
+            code = languages.normalise(language)
+            if not code:
+                log.warning("%r is not a language Whisper knows, detecting instead",
+                            language)
+            language = code or None
 
         detected_prob = 0.0
         # one candidate language means nothing to detect, which halves CPU time

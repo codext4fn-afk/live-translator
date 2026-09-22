@@ -12,6 +12,9 @@ from difflib import SequenceMatcher
 
 import httpx
 
+from .languages import name as language_name
+from .languages import needs_romanisation
+
 log = logging.getLogger(__name__)
 
 _THINK_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL | re.IGNORECASE)
@@ -22,40 +25,6 @@ _TRANSLATION_RE = re.compile(
     r'"translation"\s*:\s*"((?:[^"\\]|\\.)*)"', flags=re.DOTALL
 )
 _WORD_RE = re.compile(r"[^\w]+", flags=re.UNICODE)
-
-# Whisper reports ISO 639-1
-_LANGUAGE_NAMES = {
-    "ar": "Arabic", "bg": "Bulgarian", "bn": "Bengali", "cs": "Czech",
-    "da": "Danish", "de": "German", "el": "Greek", "en": "English",
-    "es": "Spanish", "et": "Estonian", "fa": "Persian", "fi": "Finnish",
-    "fr": "French", "he": "Hebrew", "hi": "Hindi", "hr": "Croatian",
-    "hu": "Hungarian", "id": "Indonesian", "it": "Italian", "ja": "Japanese",
-    "ko": "Korean", "lt": "Lithuanian", "lv": "Latvian", "ms": "Malay",
-    "nl": "Dutch", "no": "Norwegian", "pl": "Polish", "pt": "Portuguese",
-    "ro": "Romanian", "ru": "Russian", "sk": "Slovak", "sl": "Slovenian",
-    "sr": "Serbian", "sv": "Swedish", "ta": "Tamil", "th": "Thai",
-    "tl": "Tagalog", "tr": "Turkish", "uk": "Ukrainian", "ur": "Urdu",
-    "vi": "Vietnamese", "zh": "Chinese",
-}
-
-
-def language_name(code: str) -> str:
-    if not code:
-        return "an unknown language"
-    return _LANGUAGE_NAMES.get(code.lower(), code.upper())
-
-
-# Languages whose everyday writing system is not Latin
-NON_LATIN_SCRIPTS = frozenset({
-    "am", "ar", "as", "bg", "bn", "dv", "el", "fa", "gu", "he", "hi", "hy", "ja",
-    "ka", "km", "kn", "ko", "lo", "ml", "mn", "mr", "my", "ne", "or", "pa", "ps",
-    "ru", "sd", "si", "sr", "ta", "te", "th", "ti", "uk", "ur", "yi", "zh",
-})
-
-
-def needs_romanisation(code: str) -> bool:
-    return (code or "").lower() in NON_LATIN_SCRIPTS
-
 
 def _wrong_script(text: str, target_code: str) -> bool:
     """True when a translation into a non-Latin script came back in Latin letters."""

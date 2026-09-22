@@ -28,7 +28,9 @@ from .motion import PressableButton, PressableFrame, SoundCues, SplashSurface
 from .settings_panel import SettingsPanel
 from .sounds import SoundBoard, silent
 from .theme import Icon
-from .suggest import _LANGUAGE_NAMES, Outgoing, Reply, language_name
+from .languages import NAMES as LANGUAGE_NAMES
+from .languages import name as language_name
+from .suggest import Outgoing, Reply
 
 log = logging.getLogger(__name__)
 
@@ -244,7 +246,7 @@ class ComposeBar(QFrame):
         self._picker.setObjectName("langPicker")
         self._picker.setCursor(QCursor(Qt.PointingHandCursor))
         self._picker.addItem("Auto", "")
-        for code, name in sorted(_LANGUAGE_NAMES.items(), key=lambda kv: kv[1]):
+        for code, name in sorted(LANGUAGE_NAMES.items(), key=lambda kv: kv[1]):
             self._picker.addItem(name, code)
         self._picker.setToolTip(
             "Language to translate into. Auto follows whoever spoke last."

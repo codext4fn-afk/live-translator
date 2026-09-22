@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 
 from . import motion, theme
 from .motion import PressableButton, PressableFrame, SoundCues
-from .suggest import _LANGUAGE_NAMES
+from .languages import NAMES as LANGUAGE_NAMES
 from .theme import Icon
 
 log = logging.getLogger(__name__)
@@ -121,7 +121,7 @@ class SettingsPanel(QFrame):
         self._language = QComboBox()
         self._language.setObjectName("langPicker")
         self._language.setCursor(Qt.PointingHandCursor)
-        names = sorted({*_LANGUAGE_NAMES.values(), "English"})
+        names = sorted({*LANGUAGE_NAMES.values(), "English"})
         self._language.addItems(names)
         if my_language in names:
             self._language.setCurrentText(my_language)

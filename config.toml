@@ -1,28 +1,36 @@
 # live-translator settings. Edit, save, restart
-# Anything you delete falls back to a sensible default
+# Delete anything you do not want to change and it falls back to a default
 
 [languages]
 # What you want things translated into
 my_language = "English"
 
 auto_detect = true
-source = ""                  # ISO code, used only when auto_detect = false
+source = ""                  # language code, used only when auto_detect = false
 
 # Languages it will try to detect. Cut this down to the ones you actually hear:
 # fewer options means fewer wrong guesses. Keep your own language in the list so
-# it can be recognised and then ignored below. Empty = all 99
-allowed = ["en", "fr", "es", "pt", "de", "it", "nl", "ar", "ru", "tr", "pl", "id", "ja"]
+# it can be recognised and then ignored below. Empty = all 100
+#
+# Codes are Whisper's, which are not always the obvious ones:
+#   tl  Filipino        ms  Malay          id  Indonesian
+#   zh  Chinese         yue Cantonese      ja  Japanese
+#   ko  Korean          vi  Vietnamese     th  Thai
+#   pt  Portuguese      ar  Arabic         hi  Hindi
+# Writing "filipino" or "fl" works too, it gets read as tl
+allowed = ["en", "fr", "es", "pt", "de", "it", "nl", "ar", "ru", "tr", "pl",
+           "id", "ja", "tl", "ms", "vi", "th", "ko", "zh", "hi"]
 
 # Skipped completely: no card, no replies, no model call. Your own language is
 # here because you do not need it translated, and skipping it is a big speed win
 ignore_languages = ["en"]
 
-# Shown but not translated. Only matters for languages not in the list above
+# Shown but not translated. Only matters for languages not ignored above
 skip_translation_for = ["en"]
 
 
 [asr]
-# auto picks what suits your hardware. NVIDIA gets large-v3-turbo on the GPU
+# auto picks what suits your hardware. NVIDIA gets large-v3-turbo on the GPU.
 # Anything else (AMD, Intel, no GPU) gets small on the CPU, because the speech
 # library only accelerates on CUDA and a GPU-sized model on a CPU runs slower
 # than real time. Override any of these if you want something specific
@@ -51,7 +59,7 @@ min_speech_ms = 500          # ignore blips shorter than this
 max_utterance_ms = 9000      # hard limit on one sentence
 pre_roll_ms = 300            # audio kept from just before someone starts talking
 
-# Long speech gets cut into pieces so you are not waiting for someone to finish
+# Long speech gets cut into pieces so you are not waiting for someone to finish.
 # 150 ms is measured: words are 50-100 ms apart, clause breaks start around 140
 chunk_after_ms = 2500
 chunk_silence_ms = 150
@@ -102,4 +110,4 @@ acrylic = false
 
 # graphite, slate, ink, ash, midnight, plum, forest, ember
 # The gear button changes this and writes it back here
-gradient = "graphite"
+gradient = "ink"

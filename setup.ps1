@@ -27,23 +27,13 @@ Say "live-translator setup" "Cyan"
 Say ("=" * 60)
 
 # config
-# A fresh clone has no config.toml: it is gitignored so that pulling an update never
-# overwrites anyone's language, device or appearance choices
+# config.toml ships with the repo, so a fresh clone already has one. An older
+# copy pins the NVIDIA settings, and on an AMD or Intel machine that means a
+# GPU-sized model on the CPU, which is slower than real time
 $config = Join-Path $root "config.toml"
-$example = Join-Path $root "config.example.toml"
 if (-not (Test-Path $config)) {
-    if (Test-Path $example) {
-        Copy-Item $example $config
-        Ok "created config.toml from config.example.toml"
-    } else {
-        Warn "no config.example.toml found - the app will use built-in defaults"
-    }
+    Warn "no config.toml found - the app will use built-in defaults"
 } else {
-    Ok "config.toml already present - leaving it alone"
-
-    # An existing config predates hardware detection and pins the NVIDIA settings
-    # On an AMD or Intel machine that means a GPU-sized model on the CPU, which is
-    # slower than real time, so move those two keys to auto
     $text = Get-Content $config -Raw
     $before = $text
     $text = $text -replace '(?m)^\s*device\s*=\s*"cuda"\s*(#.*)?$', 'device = "auto"'
@@ -53,6 +43,8 @@ if (-not (Test-Path $config)) {
         Copy-Item $config "$config.backup" -Force
         Set-Content -Path $config -Value $text -Encoding utf8 -NoNewline
         Ok "config.toml updated to pick hardware automatically (old copy: config.toml.backup)"
+    } else {
+        Ok "config.toml looks fine"
     }
 }
 
