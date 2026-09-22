@@ -337,12 +337,10 @@ src/livetranslator/
 ## Fonts
 
 Inter ships in `assets/fonts` and loads at startup, so the window looks the same on
-every machine with nothing to install.
+every machine with nothing to install. It is under the SIL Open Font License, which
+allows it to be included and passed on.
 
-San Francisco is used instead if you already have it. Apple does not allow it to be
-redistributed, so it cannot be included here. If you want it, get SF Pro from
-[developer.apple.com/fonts](https://developer.apple.com/fonts/), install the files, and
-restart. Set `ui.font_family` to force any other font you have.
+Set `ui.font_family` in `config.toml` to use a different font you have installed.
 
 ## Privacy
 

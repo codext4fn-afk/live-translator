@@ -74,10 +74,8 @@ R_CARD = 24
 R_CONTROL = 18
 R_PILL = 22
 
-# SF first if installed. Apple does not allow it to be redistributed, so Inter ships
-# instead: it is the closest open alternative and loads from assets/fonts at startup.
+# Inter ships in assets/fonts and loads at startup, so this resolves everywhere.
 FONT_STACK = (
-    '"SF Pro Text", "SF Pro Display", "SF Pro", "SF UI Text", '
     '"Inter Variable Text", "Inter Variable", "Inter", '
     '"Segoe UI Variable Text", "Segoe UI", sans-serif'
 )

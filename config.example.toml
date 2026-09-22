@@ -87,7 +87,7 @@ max_history = 40
 always_on_top = true
 start_paused = false
 
-# San Francisco is used if you have it installed, otherwise Segoe UI Variable.
+# Inter ships with the app and is used by default. Set this to force another font.
 font_family = ""
 
 # Sounds play through the same speakers this records, so recording is muted
