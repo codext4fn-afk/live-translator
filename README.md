@@ -317,7 +317,7 @@ live.
 
 ## Contact
 
-Discord: doug.l0as, if you want to talk about the repo or send feedback. Thanks to RRosemont for
+Discord: njf7, if you want to talk about the repo or send feedback. Thanks to RRosemont for
 testing.
 
 ## Licence
