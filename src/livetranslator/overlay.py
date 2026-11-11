@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 
 from . import glass, motion, theme
 from .motion import PressableButton, PressableFrame, SoundCues, SplashSurface
-from .settings_panel import SettingsPanel
+from .settings_panel import NoWheelComboBox, SettingsPanel
 from .sounds import SoundBoard, silent
 from .theme import Icon
 from .languages import NAMES as LANGUAGE_NAMES
@@ -242,7 +242,7 @@ class ComposeBar(QFrame):
         row = QHBoxLayout()
         row.setSpacing(8)
 
-        self._picker = QComboBox()
+        self._picker = NoWheelComboBox()
         self._picker.setObjectName("langPicker")
         self._picker.setCursor(QCursor(Qt.PointingHandCursor))
         self._picker.addItem("Auto", "")
@@ -299,8 +299,12 @@ class ComposeBar(QFrame):
 
         layout.addWidget(_label(Icon.COPY, "copyIcon", wrap=False), 0, Qt.AlignTop)
         row.setToolTip("Click to copy")
-        # Copies the text itself, never the romanisation
-        row.clicked.connect(lambda: self._overlay.copy_to_clipboard(label.text()))
+        # Copies the text itself, never the romanisation. remember=False because
+        # the compose loop already put what you typed into the chat history,
+        # and adding the translation too made the model see it twice
+        row.clicked.connect(
+            lambda: self._overlay.copy_to_clipboard(label.text(), remember=False)
+        )
         return row, label, say
 
 
@@ -321,6 +325,9 @@ class ComposeBar(QFrame):
             self.show_error("No language yet - wait for someone to speak, or pick one.")
             return
         self._input.clear()
+        # Greyed out until the result comes back, so a double tap on Enter does
+        # not queue the same sentence twice
+        self.set_busy(True)
         self._overlay.sounds.play("send")
         motion.flash(self._send)
         self.show_pending(text, target)
@@ -682,13 +689,13 @@ class Overlay(QWidget):
         self.request_quit()
         super().closeEvent(event)
 
-    def copy_to_clipboard(self, text: str) -> None:
+    def copy_to_clipboard(self, text: str, *, remember: bool = True) -> None:
         if not text or text == "translating…":
             return
         QGuiApplication.clipboard().setText(text)
         self.sounds.play("copy")
         self.toast("copied")
-        if self._on_copy is not None:
+        if remember and self._on_copy is not None:
             try:
                 self._on_copy(text)
             except Exception:
@@ -734,6 +741,14 @@ class Overlay(QWidget):
     def _run_callable(self, fn: Callable[[], None]) -> None:
         try:
             fn()
+        except RuntimeError as exc:
+            # Normal when a card is cleared or pushed out of the history while
+            # the model is still writing into it. Nothing to show, so don't
+            # fill the log with stack traces for it
+            if "already deleted" in str(exc):
+                log.debug("skipped an update for a card that is gone")
+            else:
+                log.exception("overlay callback failed")
         except Exception:
             log.exception("overlay callback failed")
 

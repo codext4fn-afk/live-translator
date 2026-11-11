@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import re
 import tomllib
 from dataclasses import dataclass, field, fields, is_dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, get_type_hints
+from urllib.parse import urlsplit
 
 from . import languages
 
 log = logging.getLogger(__name__)
+
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 @dataclass
@@ -59,7 +64,8 @@ class AudioConfig:
 @dataclass
 class SuggestConfig:
     enabled: bool = True
-    model: str = "qwen3:4b"
+    # auto picks the strongest chat model you have in Ollama that fits your GPU
+    model: str = "auto"
     host: str = "http://127.0.0.1:11434"
     count: int = 3
     tone: str = "casual and friendly, like a teenager in a game voice chat"
@@ -67,7 +73,7 @@ class SuggestConfig:
     timeout_s: int = 30
     keep_alive: str = "1h"
     num_ctx: int = 2048
-    temperature: float = 0.7
+    temperature: float = 0.6
 
 
 @dataclass
@@ -157,8 +163,16 @@ def load(path: str | Path | None = None) -> tuple[Config, list[str]]:
         warnings.append(f"no config file at {path} - using built-in defaults")
         return cfg, warnings
 
-    with path.open("rb") as handle:
-        raw = tomllib.load(handle)
+    # A broken file used to crash the app before any window opened, and with
+    # pythonw there is no console, so it just looked like nothing happened.
+    # Fall back to defaults instead and leave source_path empty so the app
+    # never writes over a file the user might want to fix by hand
+    try:
+        with path.open("rb") as handle:
+            raw = tomllib.load(handle)
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        warnings.append(f"could not read {path.name} ({exc}) - using built-in defaults")
+        return cfg, warnings
 
     cfg.source_path = path
     for f in fields(cfg):
@@ -180,6 +194,50 @@ def load(path: str | Path | None = None) -> tuple[Config, list[str]]:
     return cfg, warnings
 
 
+def _toml_string(value: str) -> str:
+    # JSON string escaping is also valid TOML, so quotes, backslashes and
+    # newlines in a value can no longer break the file
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def _value_end(text: str, start: int) -> int:
+    """Find where a value that starts at `start` finishes.
+
+    Most values end at the end of their line, but an array like `allowed`
+    is often spread over several lines. The old code only replaced the first
+    line and left the rest behind, which broke the whole file. This walks
+    forward counting brackets and skipping anything inside quotes, and stops
+    before a trailing comment so that comment survives
+    """
+    depth = 0
+    quote = ""
+    i = start
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            if ch == "\\" and quote == '"':
+                i += 2
+                continue
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+        elif ch == "#" and depth <= 0:
+            break
+        elif ch == "\n" and depth <= 0:
+            break
+        i += 1
+    # leave the spaces in front of a trailing comment where they were
+    if i < len(text) and text[i] == "#":
+        while i > start and text[i - 1] in " \t":
+            i -= 1
+    return i
+
+
 def save_value(path: Path | None, section: str, key: str,
                value: str | list[str]) -> bool:
     """Persist one setting, a string or a list, preserving comments and layout."""
@@ -194,34 +252,50 @@ def save_value(path: Path | None, section: str, key: str,
         return False
 
     if isinstance(value, (list, tuple)):
-        rendered = "[" + ", ".join(f'"{v}"' for v in value) + "]"
+        rendered = "[" + ", ".join(_toml_string(v) for v in value) + "]"
     else:
-        rendered = f'"{value}"'
+        rendered = _toml_string(value)
 
-    line_re = re.compile(rf'^(\s*){re.escape(key)}\s*=\s*.*$', re.MULTILINE)
-    replacement = f'\\1{key} = {rendered}'
-    section_re = re.compile(rf"^\s*\[{re.escape(section)}\]\s*$", re.MULTILINE)
+    key_re = re.compile(rf"^[ \t]*{re.escape(key)}[ \t]*=[ \t]*", re.MULTILINE)
+    section_re = re.compile(rf"^[ \t]*\[{re.escape(section)}\][ \t]*$", re.MULTILINE)
 
     found = section_re.search(text)
     if found is None:
-        text = f'{text.rstrip()}\n\n[{section}]\n{key} = {rendered}\n'
+        text = f"{text.rstrip()}\n\n[{section}]\n{key} = {rendered}\n"
     else:
-        # Only touch a key inside this section: the same name may exist in another
+        # Only look inside this section, the same key name can exist in another one
         start = found.end()
-        next_section = re.search(r"^\s*\[", text[start:], re.MULTILINE)
+        next_section = re.search(r"^[ \t]*\[[A-Za-z]", text[start:], re.MULTILINE)
         end = start + next_section.start() if next_section else len(text)
-        block = text[start:end]
 
-        if line_re.search(block):
-            block = line_re.sub(replacement, block, count=1)
+        match = key_re.search(text, start, end)
+        if match:
+            value_end = _value_end(text, match.end())
+            text = text[:match.end()] + rendered + text[value_end:]
         else:
-            block = block.rstrip("\n") + f'\n{key} = {rendered}\n\n'
-        text = text[:start] + block + text[end:]
+            block = text[start:end].rstrip("\n") + f"\n{key} = {rendered}\n\n"
+            text = text[:start] + block + text[end:]
 
+    # Make sure what we are about to write still parses, so a bug in here can
+    # never leave the user with a config the app refuses to load
     try:
-        path.write_text(text, encoding="utf-8")
+        tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        log.warning("not saving %s, the result would not parse: %s", key, exc)
+        return False
+
+    # Write to a temp file first and swap it in, so a crash halfway through
+    # cannot leave a half written config behind
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
     except OSError:
         log.warning("could not write %s", path)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
         return False
     return True
 
@@ -304,6 +378,40 @@ def _validate(cfg: Config) -> list[str]:
     if cfg.asr.beam_size < 1:
         notes.append("asr.beam_size below 1 - raised to 1")
         cfg.asr.beam_size = 1
+
+    # These were never checked before. A max_history of 0 deleted every card
+    # the moment it appeared, and a zero timeout made every request fail
+    def clamp(section: Any, key: str, low: float, high: float) -> None:
+        value = getattr(section, key)
+        fixed = min(high, max(low, value))
+        if fixed != value:
+            name = f"{type(section).__name__.removesuffix('Config').lower()}.{key}"
+            notes.append(f"{name} {value} out of range {low}-{high} - using {fixed}")
+            setattr(section, key, type(value)(fixed))
+
+    clamp(cfg.ui, "sound_volume", 0.0, 1.0)
+    clamp(cfg.ui, "max_history", 1, 500)
+    clamp(cfg.ui, "font_size", 8, 32)
+    clamp(cfg.ui, "width", 420, 4000)
+    clamp(cfg.ui, "height", 340, 4000)
+    clamp(cfg.suggest, "timeout_s", 5, 600)
+    clamp(cfg.suggest, "num_ctx", 512, 131072)
+    clamp(cfg.suggest, "temperature", 0.0, 2.0)
+    clamp(cfg.suggest, "context_turns", 0, 50)
+
+    if not cfg.suggest.model.strip():
+        cfg.suggest.model = "auto"
+
+    # Everything you hear gets sent to this address. Plain http to another
+    # machine means the conversation crosses the network unencrypted
+    host = urlsplit(cfg.suggest.host)
+    if host.scheme not in ("http", "https") or not host.hostname:
+        notes.append(f"suggest.host {cfg.suggest.host!r} is not a valid URL - "
+                     "using http://127.0.0.1:11434")
+        cfg.suggest.host = "http://127.0.0.1:11434"
+    elif host.scheme == "http" and host.hostname not in _LOCAL_HOSTS:
+        notes.append(f"suggest.host points at {host.hostname} over plain http, so "
+                     "everything you hear is sent across the network unencrypted")
 
     if not cfg.languages.auto_detect and not cfg.languages.source:
         notes.append(

@@ -101,6 +101,51 @@ def gpu_names() -> list[str]:
     return names
 
 
+def gpu_vram_bytes() -> int:
+    """Dedicated video memory of the biggest graphics card, 0 if unknown.
+
+    Read from the same registry keys as gpu_names. qwMemorySize is the 64 bit
+    value newer drivers write. The older MemorySize tops out at 4 GB, so it is
+    only used when the new one is missing. Integrated graphics report a tiny
+    number here, which is fine because the caller treats that as no GPU
+    """
+    if sys.platform != "win32":
+        return 0
+    import winreg
+
+    best = 0
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _GPU_KEY) as root:
+            for i in range(16):
+                try:
+                    sub = winreg.EnumKey(root, i)
+                except OSError:
+                    break
+                if not sub.isdigit():
+                    continue
+                try:
+                    with winreg.OpenKey(root, sub) as key:
+                        size = 0
+                        for value_name in ("HardwareInformation.qwMemorySize",
+                                           "HardwareInformation.MemorySize"):
+                            try:
+                                raw, _ = winreg.QueryValueEx(key, value_name)
+                            except OSError:
+                                continue
+                            # Some drivers store it as raw bytes instead of a number
+                            if isinstance(raw, bytes):
+                                raw = int.from_bytes(raw[:8], "little")
+                            if isinstance(raw, int) and raw > 0:
+                                size = raw
+                                break
+                except OSError:
+                    continue
+                best = max(best, size)
+    except OSError:
+        pass
+    return best
+
+
 def gpu_vendor() -> str:
     """One of nvidia, amd, intel or unknown, based on the adapter names."""
     joined = " ".join(gpu_names()).lower()

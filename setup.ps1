@@ -12,7 +12,7 @@
 
 param(
     [switch]$Force,          # delete and rebuild the virtual environment
-    [string]$SuggestModel    # model to pull, default: read from config.toml
+    [string]$SuggestModel    # model to pull, default: read from config.toml (auto = let the app choose)
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,21 +49,34 @@ if (-not (Test-Path $config)) {
 }
 
 # python
+# 3.11 is the oldest that works because config.py reads the file with tomllib,
+# which 3.10 does not have. This used to accept 3.10 and then crash on start
+function Test-PythonVersion($exe) {
+    $version = & $exe -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null
+    if (-not $version) { return $false }
+    $parts = $version.Trim().Split(".")
+    $minor = [int]$parts[1]
+    return ([int]$parts[0] -eq 3) -and ($minor -ge 11) -and ($minor -le 13)
+}
+
 $python = $null
 foreach ($candidate in @(
     "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
     "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
-    "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe"
+    "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 )) {
-    if (Test-Path $candidate) { $python = $candidate; break }
+    if ((Test-Path $candidate) -and (Test-PythonVersion $candidate)) { $python = $candidate; break }
 }
 if (-not $python) {
     $cmd = Get-Command python -ErrorAction SilentlyContinue
-    # Skip the Microsoft Store stub, which is not a real interpreter
-    if ($cmd -and $cmd.Source -notlike "*WindowsApps*") { $python = $cmd.Source }
+    # Skip the Microsoft Store stub, which is not a real interpreter. Whatever is
+    # on PATH also gets its version checked, it could be anything
+    if ($cmd -and $cmd.Source -notlike "*WindowsApps*" -and (Test-PythonVersion $cmd.Source)) {
+        $python = $cmd.Source
+    }
 }
 if (-not $python) {
-    Bad "Python 3.10-3.12 not found."
+    Bad "Python 3.11-3.13 not found."
     Say ""
     Say "Install it with:" "Cyan"
     Say "  winget install --id Python.Python.3.11 --scope user"
@@ -110,17 +123,38 @@ if (-not $ollama) {
     if (-not $SuggestModel) {
         $configPath = Join-Path $root "config.toml"
         if (Test-Path $configPath) {
-            $match = Select-String -Path $configPath -Pattern '^\s*model\s*=\s*"([^"]+)"' -AllMatches
-            # [suggest].model is the second `model =` key in the file ([asr] comes first)
-            if ($match.Matches.Count -ge 1) {
-                $SuggestModel = $match[-1].Matches[0].Groups[1].Value
+            # Read model only from inside [suggest]. The old version took the
+            # last `model =` in the whole file, which was [asr]'s if the
+            # [suggest] one had been deleted, and then tried to pull "auto"
+            $section = ""
+            foreach ($line in Get-Content $configPath) {
+                if ($line -match '^\s*\[([^\]]+)\]') { $section = $Matches[1].Trim(); continue }
+                if ($section -eq "suggest" -and $line -match '^\s*model\s*=\s*"([^"]*)"') {
+                    $SuggestModel = $Matches[1]
+                    break
+                }
             }
         }
     }
-    if (-not $SuggestModel) { $SuggestModel = "qwen3:4b" }
+    if (-not $SuggestModel) { $SuggestModel = "auto" }
 
-    $installed = & $ollama list 2>$null
-    if ($installed -match [regex]::Escape($SuggestModel)) {
+    # `ollama list` prints a header row, then one model per line
+    $installed = @(& $ollama list 2>$null | Select-Object -Skip 1 | Where-Object { $_.Trim() })
+    # Embedding models can't chat, so they don't count as having a model
+    $chatModels = @($installed | Where-Object { $_ -notmatch 'embed' })
+
+    if ($SuggestModel -eq "auto") {
+        # The app picks the strongest model you have by itself, so only pull
+        # one when there is nothing to pick from
+        if ($chatModels.Count -gt 0) {
+            Ok "$($chatModels.Count) model(s) in Ollama, the app will pick the strongest one that fits"
+        } else {
+            $fallback = "qwen3:4b"
+            Say "  no chat models yet, pulling $fallback (a few GB)..."
+            & $ollama pull $fallback
+            if ($?) { Ok "model $fallback pulled" } else { Warn "pull failed - run: ollama pull $fallback" }
+        }
+    } elseif ($installed -match [regex]::Escape($SuggestModel)) {
         Ok "model $SuggestModel already present"
     } else {
         Say "  pulling $SuggestModel (a few GB)..."

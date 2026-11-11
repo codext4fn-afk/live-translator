@@ -32,6 +32,7 @@ class Pipeline:
         self._ready = threading.Event()
         # Set once the warmup thread has finished, successfully or not
         self._suggester_ready = threading.Event()
+        self._reset_segmenter = threading.Event()
         self._threads: list[threading.Thread] = []
 
         self._utterances: queue.Queue[Utterance] = queue.Queue(maxsize=8)
@@ -92,38 +93,58 @@ class Pipeline:
     def set_paused(self, paused: bool) -> None:
         if self._capture is not None:
             self._capture.set_paused(paused)
+        if paused:
+            # The segmenter belongs to the segment thread, so ask it to reset
+            # rather than touching it from the GUI thread
+            self._reset_segmenter.set()
+
+    def _my_code(self) -> str:
+        return _language_code(self.cfg.languages.my_language)
+
+    def _ignored(self) -> set[str]:
+        """Languages that get dropped without a card.
+
+        This is whatever config.toml lists plus the language you picked in
+        Settings, worked out fresh every time. The old version wrote each new
+        pick into the file and never took it back out, so trying Spanish for a
+        minute meant Spanish speech was silently thrown away forever after
+        """
+        codes = {c.lower() for c in self.cfg.languages.ignore_languages}
+        if self._my_code():
+            codes.add(self._my_code())
+        return codes
+
+    def _untranslated(self) -> set[str]:
+        """Languages shown as they are, same idea as _ignored"""
+        codes = {c.lower() for c in self.cfg.languages.skip_translation_for}
+        if self._my_code():
+            codes.add(self._my_code())
+        return codes
+
+    def _allowed(self) -> list[str]:
+        # Your own language has to stay detectable, otherwise Whisper forces
+        # your speech into whichever allowed language sounds closest
+        allowed = list(self.cfg.languages.allowed)
+        code = self._my_code()
+        if allowed and code and code not in allowed:
+            allowed.append(code)
+        return allowed
 
     def set_my_language(self, name: str) -> None:
         """Change the language everything is translated into, and remember it."""
-        previous = _language_code(self.cfg.languages.my_language)
+        if name == self.cfg.languages.my_language:
+            return
         self.cfg.languages.my_language = name
         if self._suggester is not None:
             self._suggester.set_my_language(name)
+        if self._transcriber is not None:
+            self._transcriber.allowed_languages = set(self._allowed())
 
-        code = _language_code(name)
-        if code and code != previous:
-            # Add the new language, never remove one: replacing these lists wholesale
-            # once stopped English being ignored while config.toml still said it was
-            for attr in ("ignore_languages", "skip_translation_for"):
-                current = list(getattr(self.cfg.languages, attr))
-                if code not in current:
-                    current.append(code)
-                setattr(self.cfg.languages, attr, current)
-                config_mod.save_value(self.cfg.source_path, "languages", attr, current)
-
-            allowed = set(self.cfg.languages.allowed)
-            if allowed:
-                # Keep it detectable, or its speech gets forced into another language
-                allowed.add(code)
-                self.cfg.languages.allowed = sorted(allowed)
-                config_mod.save_value(self.cfg.source_path, "languages", "allowed",
-                                      self.cfg.languages.allowed)
-                if self._transcriber is not None:
-                    self._transcriber.allowed_languages = allowed
-
+        # Only my_language goes back to the file. The lists stay exactly how the
+        # user wrote them, see _ignored for why
         config_mod.save_value(self.cfg.source_path, "languages", "my_language", name)
         log.info("translating into %s; ignoring %s", name,
-                 ", ".join(self.cfg.languages.ignore_languages) or "nothing")
+                 ", ".join(sorted(self._ignored())) or "nothing")
 
     def suppress_capture(self, milliseconds: int) -> None:
         """Ignore captured audio briefly - used while an interface sound plays."""
@@ -177,7 +198,7 @@ class Pipeline:
                 min_chars=self.cfg.asr.min_chars,
                 min_language_prob=self.cfg.asr.min_language_prob,
                 min_audio_s=self.cfg.asr.min_audio_s,
-                allowed_languages=self.cfg.languages.allowed,
+                allowed_languages=self._allowed(),
             )
 
             self._status("opening audio…")
@@ -225,18 +246,31 @@ class Pipeline:
         log.info("segmenter using %s", segmenter.backend_name)
         self._segmenter = segmenter
         was_active = False
+        last_frame = time.monotonic()
+        # Windows sends nothing at all through loopback while nothing is playing.
+        # So if the audio cuts out mid sentence the segmenter never gets the
+        # silence it waits for, and that last sentence used to sit there until
+        # the next sound. After this long with no frames we end it ourselves
+        idle_cutoff = max(0.3, audio_cfg.silence_ms / 1000.0)
 
         while not self._stop.is_set():
+            if self._reset_segmenter.is_set():
+                # Paused: throw away the half sentence so it does not get glued
+                # onto whatever plays after resuming
+                self._reset_segmenter.clear()
+                segmenter.reset()
+
             try:
                 frame = self._capture.frames.get(timeout=0.2)
             except queue.Empty:
-                if segmenter.active:
-                    continue
-                if was_active:
+                if segmenter.active and time.monotonic() - last_frame >= idle_cutoff:
+                    self._hand_off(segmenter.flush())
+                if was_active and not segmenter.active:
                     was_active = False
                     self.overlay.post(lambda: self.overlay.set_listening(False))
                 continue
 
+            last_frame = time.monotonic()
             utterance = segmenter.push(frame)
 
             if segmenter.active != was_active:
@@ -244,11 +278,15 @@ class Pipeline:
                 state = was_active
                 self.overlay.post(lambda s=state: self.overlay.set_listening(s))
 
-            if utterance is not None:
-                try:
-                    self._utterances.put_nowait(utterance)
-                except queue.Full:
-                    log.warning("transcription is behind - dropped an utterance")
+            self._hand_off(utterance)
+
+    def _hand_off(self, utterance: Utterance | None) -> None:
+        if utterance is None:
+            return
+        try:
+            self._utterances.put_nowait(utterance)
+        except queue.Full:
+            log.warning("transcription is behind - dropped an utterance")
 
     def _asr_loop(self) -> None:
         while not self._stop.is_set():
@@ -268,28 +306,30 @@ class Pipeline:
                 log.exception("transcription failed")
                 continue
 
+            # What people actually said only goes in the log with --debug. These
+            # are other people's words, so they should not pile up on disk by default
             if not result.accepted:
                 self._rejected += 1
                 self._last_reject = result.reject_reason
-                log.info("filtered (%s): %r", result.reject_reason, result.text)
+                log.info("filtered (%s)", result.reject_reason)
+                log.debug("filtered text: %r", result.text)
                 continue
 
             code = (result.language or "").lower()
-            if code in {c.lower() for c in self.cfg.languages.ignore_languages}:
-                log.info("ignored %s(%.2f): %r", code, result.language_prob,
-                         result.text[:60])
+            if code in self._ignored():
+                log.info("ignored %s(%.2f)", code, result.language_prob)
+                log.debug("ignored text: %r", result.text[:60])
                 continue
 
             log.info(
-                "heard %.1fs %s(%.2f) in %.2fs: %r",
+                "heard %.1fs %s(%.2f) in %.2fs",
                 result.audio_s, result.language, result.language_prob,
-                result.decode_s, result.text,
+                result.decode_s,
             )
+            log.debug("heard text: %r", result.text)
 
             self._accepted += 1
-            translate = code not in {
-                c.lower() for c in self.cfg.languages.skip_translation_for
-            }
+            translate = code not in self._untranslated()
             # Whoever spoke last is who the compose box will translate towards
             if code:
                 self.overlay.post(lambda c=code: self.overlay.set_target_language(c))
@@ -310,7 +350,10 @@ class Pipeline:
             if self.cfg.suggest.enabled:
                 card.awaiting_replies()
             else:
-                card.set_error("suggestions are turned off")
+                # Translation comes from the same Ollama call as the replies, so
+                # with suggestions off there is no translation either. Say so
+                # plainly instead of leaving it looking broken
+                card.set_error("translation and replies are off (suggest.enabled = false)")
             holder["card"] = card
             created.set()
 
@@ -346,9 +389,7 @@ class Pipeline:
                 )
                 continue
 
-            translate = code not in {
-                c.lower() for c in self.cfg.languages.skip_translation_for
-            }
+            translate = code not in self._untranslated()
             with self._history_lock:
                 history = list(self._history)
 
@@ -442,7 +483,8 @@ class Pipeline:
             if self._transcriber is not None:
                 parts.append(f"whisper {self.cfg.asr.model} [{self._transcriber.backend_name}]")
             if self._suggester is not None:
-                parts.append(self.cfg.suggest.model)
+                # the real model name, which matters when the config says auto
+                parts.append(self._suggester.model)
             else:
                 parts.append("no suggestions")
             parts.append(f"{self._accepted} kept / {self._rejected} filtered")
@@ -470,8 +512,8 @@ class Pipeline:
         self.overlay.post(build)
 
 
-def run(cfg: Config) -> None:
-    """Build the overlay and pipeline, then block on the Tk event loop."""
+def run(cfg: Config, notices: list[str] | None = None) -> None:
+    """Build the overlay and pipeline, then block on the Qt event loop."""
     board = SoundBoard(
         Path(__file__).resolve().parents[2] / "sounds",
         enabled=cfg.ui.sounds,
@@ -503,6 +545,9 @@ def run(cfg: Config) -> None:
 
     if cfg.ui.start_paused:
         overlay.post(overlay.toggle_pause)
+
+    for notice in notices or []:
+        pipeline._banner(notice)
 
     pipeline.start()
     try:

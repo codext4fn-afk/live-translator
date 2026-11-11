@@ -28,11 +28,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default=None,
                         help="override [asr].model, e.g. medium or distil-large-v3")
     parser.add_argument("--suggest-model", default=None,
-                        help="override [suggest].model, e.g. gemma3:4b")
+                        help="override [suggest].model, e.g. gemma3:4b, or auto")
     parser.add_argument("--language", default=None,
                         help="force the incoming language (ISO code) instead of detecting")
     parser.add_argument("--no-suggest", action="store_true",
-                        help="translation only; skip the language model entirely")
+                        help="transcript only, no Ollama at all (so no translation "
+                             "and no replies)")
     parser.add_argument("--demo", action="store_true",
                         help="show the overlay with sample content; no audio or models")
     parser.add_argument("--cpu", action="store_true",
@@ -125,12 +126,48 @@ def main(argv: list[str] | None = None) -> int:
 
     from .pipeline import run
 
+    # Problems the user has to see in the window, not just in a log they never
+    # open. Right now that is only a config file that would not load
+    notices = [w for w in warnings if w.startswith("could not read")]
+
     try:
-        run(cfg)
+        run(cfg, notices=notices)
     except KeyboardInterrupt:
         log.info("interrupted")
     return 0
 
 
+def _show_crash(message: str) -> None:
+    """Pop up a plain Windows message box.
+
+    The launcher uses pythonw, which has no console, so without this a crash
+    at startup just looks like the app never opened. Uses the Win32 call
+    directly because Qt might be the thing that failed
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.user32.MessageBoxW(None, message, "live-translator", 0x10)
+    except Exception:
+        pass
+
+
+def _entry() -> int:
+    try:
+        return main()
+    except SystemExit:
+        raise
+    except Exception as exc:
+        logging.getLogger("livetranslator").exception("fatal error")
+        _show_crash(
+            f"live-translator stopped because of an error:\n\n"
+            f"{exc.__class__.__name__}: {exc}\n\n"
+            f"Details are in {LOG_DIR / 'live-translator.log'}"
+        )
+        return 1
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(_entry())

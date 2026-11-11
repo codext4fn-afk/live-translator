@@ -114,14 +114,29 @@ class SoundBoard:
         self._on_play = fn
 
     def _build(self) -> None:
+        # winsound has no volume control, so the volume is baked into the files.
+        # They used to be made once and never again, which meant changing
+        # sound_volume did nothing after the first run. A small stamp file
+        # remembers which volume the files were made at
+        stamp = self._dir / "volume.txt"
+        wanted = f"{self.volume:.3f}"
+        try:
+            stale = stamp.read_text(encoding="utf-8").strip() != wanted
+        except OSError:
+            stale = True
+
         for name, spec in _SPECS.items():
             samples = _tone(spec) * self.volume
             path = self._dir / f"{name}.wav"
-            # Regenerate only when missing or stale, so startup stays fast
-            if not path.is_file() or path.stat().st_size < 64:
+            # Only rebuild when needed, so startup stays fast
+            if stale or not path.is_file() or path.stat().st_size < 64:
                 _write_wav(path, samples)
             self._paths[name] = path
             self._duration_ms[name] = int(1000 * samples.size / RATE)
+
+        if stale:
+            stamp.parent.mkdir(parents=True, exist_ok=True)
+            stamp.write_text(wanted, encoding="utf-8")
 
     def play(self, name: str) -> None:
         if not self.enabled:
@@ -140,7 +155,11 @@ class SoundBoard:
             self._quiet_until = now + self._duration_ms.get(name, 80) / 1000.0
 
         duration = self._duration_ms.get(name, 80)
-        if self._on_play is not None:
+        # Every sound used to mute the recording for a moment, hover included.
+        # Moving the mouse across the window could chop the start off what
+        # someone was saying. The hover tick is 16 ms and very quiet, far too
+        # short to ever count as speech, so it no longer mutes anything
+        if self._on_play is not None and name != "hover":
             try:
                 # Pad generously: the speaker keeps ringing after the file ends
                 self._on_play(duration + 180)

@@ -23,6 +23,21 @@ from .theme import Icon
 log = logging.getLogger(__name__)
 
 
+class NoWheelComboBox(QComboBox):
+    """A dropdown that ignores the scroll wheel unless its list is open.
+
+    A normal QComboBox changes its value when you scroll over it. In an overlay
+    you scroll past all the time, so this kept switching languages by accident,
+    once for every language the pointer rolled over
+    """
+
+    def wheelEvent(self, event) -> None:  # noqa: ANN001 - Qt signature
+        if self.view().isVisible():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
+
 class Swatch(PressableFrame):
     """A preview tile filled with one gradient."""
 
@@ -118,7 +133,7 @@ class SettingsPanel(QFrame):
         outer.addWidget(language_hint)
         outer.addSpacing(6)
 
-        self._language = QComboBox()
+        self._language = NoWheelComboBox()
         self._language.setObjectName("langPicker")
         self._language.setCursor(Qt.PointingHandCursor)
         names = sorted({*LANGUAGE_NAMES.values(), "English"})
@@ -129,12 +144,18 @@ class SettingsPanel(QFrame):
             "Incoming speech is translated into this, and reply meanings are "
             "written in it."
         )
-        self._language.currentTextChanged.connect(self._choose_language)
+        # textActivated only fires when the user actually picks something, not
+        # when the value changes in code or while arrowing through the list
+        self._language.textActivated.connect(self._choose_language)
+        self._my_language = my_language
         outer.addWidget(self._language)
 
         self.hide()
 
     def _choose_language(self, name: str) -> None:
+        if name == self._my_language:
+            return
+        self._my_language = name
         if self._sounds is not None:
             self._sounds.click()
         self.language_chosen.emit(name)

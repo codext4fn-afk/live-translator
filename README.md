@@ -97,7 +97,7 @@ change:
 | `languages.allowed` | 20 languages | Languages it will try to detect. Cut this to the ones you hear |
 | `audio.silence_ms` | 700 | How long a pause has to be to end a sentence |
 | `suggest.count` | 3 | How many replies to write. Two is faster |
-| `suggest.model` | `qwen3:4b` | Any model you have in Ollama |
+| `suggest.model` | `auto` | Picks the biggest model you have in Ollama that fits your GPU, or name one |
 | `ui.font_size` | 13 | Text size, everything scales with it |
 
 ### Languages
@@ -114,8 +114,9 @@ line in the log instead of stopping transcription.
 ### English does not show up
 
 That is deliberate. You already speak it, so English is thrown out before anything else runs,
-which is also where most of the speed comes from. Take `"en"` out of `ignore_languages` if you
-want English lines with replies. Changing your language in Settings edits that list for you.
+which is also where most of the speed comes from. Whatever `my_language` is set to is always skipped
+the same way, so if you switch to Spanish in Settings, Spanish gets skipped and English goes
+back to whatever `ignore_languages` says. Switching never edits the lists in `config.toml`.
 
 ### Hearing only the voice chat
 
@@ -216,9 +217,11 @@ Run `.\run.ps1 --check` first. It tests each part and names the problem.
 **The words are wrong.** Sentences are being cut short. Open `logs\live-translator.log`:
 
 ```
-heard 3.8s en(0.74) in 0.55s: 'How much do you like it?'
-filtered (fragment (0.41s of audio)): 'you'
+heard 3.8s en(0.74) in 0.55s
+filtered (fragment (0.41s of audio))
 ```
+
+Run with `--debug` to see the actual words next to each line.
 
 If those durations are around a second, it is cutting people off mid sentence and guessing the
 rest. Raise `audio.silence_ms`. Shortening `languages.allowed` helps as well.
@@ -244,7 +247,7 @@ or Windowed.
 | `.\run.ps1 --demo` | The window with fake content, no audio or models |
 | `.\run.ps1 --list-devices` | List audio devices |
 | `.\run.ps1 --language es` | Skip detection, assume one language |
-| `.\run.ps1 --no-suggest` | Translate only, no replies |
+| `.\run.ps1 --no-suggest` | Transcript only, no Ollama, so no translation and no replies |
 | `.\run.ps1 --debug` | Verbose logging |
 
 ## How it works
@@ -254,7 +257,7 @@ speakers
   WASAPI loopback capture, resampled to 16 kHz mono
   voice detection with an adaptive noise gate
   faster-whisper large-v3-turbo on CUDA
-  qwen3:4b through Ollama, streamed
+  the strongest Ollama model that fits your GPU, streamed
   overlay
 ```
 
@@ -289,8 +292,14 @@ src/livetranslator/
 
 ## Models
 
-`suggest.model` takes anything you have in Ollama. `gemma3:4b` is worth a try if you prefer how
-it translates.
+`suggest.model` is `auto` by default. At startup it asks Ollama what you have installed, skips
+embedding and cloud models, and takes the one with the most parameters that still fits in your
+graphics card's memory (leaving room for Whisper on NVIDIA). A model that spills out of VRAM
+gets several times slower, which is why the biggest one is not always picked. The log says
+which one it chose and why. If nothing fits it uses the smallest one and warns you.
+
+So the easiest upgrade is just `ollama pull qwen3:8b` and restarting. To force a specific
+model, name it. `gemma3:4b` is worth a try if you prefer how it translates.
 
 ```powershell
 .\run.ps1 --suggest-model gemma3:4b
@@ -309,8 +318,13 @@ and passed on. Set `ui.font_family` in `config.toml` for a different font.
 ## Privacy
 
 Audio is handled in memory and never written to disk. The only file it writes is
-`logs\live-translator.log`, which has transcribed text in it for troubleshooting, is ignored by
-git, and can be deleted whenever you like.
+`logs\live-translator.log`. By default it only has timings and languages, not what anyone said.
+Run with `--debug` and it also writes the transcribed text, for troubleshooting. The log is
+ignored by git and can be deleted whenever you like.
+
+Cloud models in Ollama (the ones that run on someone else's server) are never picked by
+`model = "auto"`, so nothing leaves your PC unless you name one yourself. If you point
+`suggest.host` at another machine over plain http, the app warns you at startup.
 
 This records calls you are part of. Recording other people may need their permission where you
 live.

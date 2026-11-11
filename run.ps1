@@ -7,7 +7,7 @@
     .\run.ps1 --check               # verify the install
     .\run.ps1 --list-devices        # show loopback capture devices
     .\run.ps1 --language es         # skip detection, assume Spanish
-    .\run.ps1 --no-suggest          # translation only
+    .\run.ps1 --no-suggest          # transcript only, skips Ollama
 #>
 
 $ErrorActionPreference = "Stop"

@@ -108,7 +108,7 @@ def main() -> int:
             line(BAD, "ollama", repr(exc))
             failures += 1
     else:
-        line(WARN, "ollama", "suggest.enabled = false - translation only")
+        line(WARN, "ollama", "suggest.enabled = false - transcript only, no translation")
 
     try:
         from PySide6.QtCore import qVersion

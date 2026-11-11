@@ -21,8 +21,9 @@ source = ""                  # language code, used only when auto_detect = false
 allowed = ["en", "fr", "es", "pt", "de", "it", "nl", "ar", "ru", "tr", "pl",
            "id", "ja", "tl", "ms", "vi", "th", "ko", "zh", "hi"]
 
-# Skipped completely: no card, no replies, no model call. Your own language is
-# here because you do not need it translated, and skipping it is a big speed win
+# Skipped completely: no card, no replies, no model call. Skipping your own
+# language is a big speed win. Whatever my_language is set to gets added to
+# both lists below automatically, even if you change it from the gear button
 ignore_languages = ["en"]
 
 # Shown but not translated. Only matters for languages not ignored above
@@ -70,8 +71,13 @@ noise_gate_dbfs = -55.0      # hard floor, safety net only
 
 
 [suggest]
+# Off means no Ollama at all, so you only get the transcript, no translation
 enabled = true
-model = "qwen3:4b"           # anything you have in Ollama
+
+# auto looks at what you have installed in Ollama and takes the biggest model
+# that fits on your graphics card, so it stays fast. Write a name like
+# "qwen3:8b" to always use that one instead
+model = "auto"
 host = "http://127.0.0.1:11434"
 count = 3                    # fewer replies is faster
 tone = "casual and friendly, like a teenager in a game voice chat"
